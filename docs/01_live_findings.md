@@ -26,10 +26,10 @@
   - `miIO.config_router` (`uid: 0`, `tz: Europe/Berlin`) returned `{"id": 21, "result": ["ok"]}`.
   - Bulb joined `HomeLan001` at `192.168.1.115` with **TCP `55443` and SSDP `1982` immediately open** (`{"id":1,"result":["on","100","3500","2"]}`).
 
-## Second Model Verified: Yeelight Color4 / 1S (, fw_ver 39)
-- **Setup AP:**  (, AP gateway , ).
+## Second Model Verified: Yeelight Color4 / 1S (`color4`, fw_ver 39)
+- **Setup AP:** `yeelink-light-color4_mibt6DA7` (`52:EC:50:89:6D:A7`, AP gateway `10.10.1.1`, `did=1023ce17`).
 - **Behavior:**
-  -  -> 
-  -  -> 
-  -  drops the AP immediately without sending a UDP ACK (raises ), then joins  at  with **TCP  and SSDP  immediately open**.
-  - Added  (, area ).
+  - `set_ps ["cfg_lan_ctrl", "1"]` -> `{"id": 11, "result": ["ok"], "exe_time": 10}`
+  - `get_prop ["lan_ctrl"]` -> `{"id": 20, "result": ["1"], "exe_time": 0}`
+  - `miIO.config_router` drops the AP immediately without sending a UDP ACK (raises `TimeoutError`), then joins `HomeLan001` at `192.168.1.116` with **TCP `55443` and SSDP `1982` immediately open**.
+  - Added `light.kinderzimmer_deckenlampe` (`Kinderzimmer Deckenlampe`, area `kinderzimmer001`).
