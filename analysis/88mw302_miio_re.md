@@ -195,10 +195,13 @@ Zusätzlich: die **UART-CLI** exponiert das PSM direkt (alle in `.text`):
 6. Fehlerpfad: `FUN_1f03c1f4(param_2, param_3, code, msg)` mit
    `"invalied"` (-1) bzw. `"no mem"` (-5, `0xfffffffb`).
 
-**Verifikationskette:** Der Client liefert `file_md5`; im Image finden sich
-zusätzlich die Strings `"user fw download failed, downloaded=%u, total=%u\n\r"`,
-`"WiFi Firmware binary zer…"` und die Magic `"XZ"` (`\xfd7zXZ`) → Firmware-Payload
-ist **XZ-komprimiert** und wird nach dem Download entpackt.
+**Verifikationskette (byte-exakt, siehe 4.2):** Der Client liefert `file_md5` (32 Hex-Zeichen);
+das Image prüft die **heruntergeladene Datei** mit einer eigenen MD5-Implementierung
+(`FUN_1f043b7c`/`1f043ba8`/`1f043c20`/`1f043460`, IVs `0x67452301`/`0xefcdab89`/`0x98badcfe`/
+`0x10325476`) gegen genau diesen Wert und danach die CRC32 je Container-Segment. Die
+Datei-Magic ist **kein XZ**: der OTA-Container trägt `"SBHF"` (`0x48464253`) bzw.
+`"MRVL"`+`0x2e9cf17b`. Die XZ-Magic (`\xfd7zXZ`) kommt im Image zwar 3× vor, aber
+**nicht** im OTA-Download-/Prüfpfad (sie gehört zur Dateisystem-Dekoression, nicht zu `miIO.ota`).
 
 Statusabfragen:
 
@@ -208,14 +211,163 @@ Statusabfragen:
 | `get_ota_progress` | `0x1f0086c4` | `{"result":%d}` aus `FUN_1f00850c()`, UART `"ota progress:%u%\r\n"` |
 | `report_ota_state` | `0x1f0084a0` | UART `"\r\nreport_ota_state: %s \r\n"`, setzt Property `ota_state`, `commit(FUN_1f007b20(…,5))` |
 
-### Offener Punkt (ehrlich benannt)
+### 4.1 OTA-Worker `0x1f008784` — Register-Propagation geschlossen
 
-Der OTA-Worker `0x1f007884` liegt in einem Analyse-Loch (`0x1f00787c`–`0x1f00799b`);
-der erzwungene Decompiler-Lauf (`export5/000_ota_worker_task.c`) liefert
-**registerbasierte, unzuverlässige** Ausgabe (`unaff_r6`). Die konkrete
-MD5-Verifikation der heruntergeladenen Datei ist damit noch **nicht** byte-exakt
-belegt — dort liegt der nächste Arbeitsschritt (manuelle Disassembly oder
-Register-Propagation mit `-analysisTimeoutPerFile`).
+Der als „Analyse-Loch“ (`0x1f00787c`–`0x1f00799b`) markierte Bereich war ein
+**Funktionsgrenzen-Artefakt** des Ghidra-Projekts, kein Decompiler-Registerproblem:
+bei `0x1f008784` war *keine* Funktion definiert (`getFunctionAt` / `getFunctionContaining`
+→ `null`), deshalb landeten die Fragmente in `export5/000_ota_worker_task.c` als
+Tail-Calls mit `unaff_*`-Registern.
+
+Mit `DecompAt.java` (`createFunction(0x1f008784,"ota_worker_task_1f008784")` +
+`DecompInterface`) dekompiliert der Bereich jetzt sauber: **518 Byte**
+(`0x1f008784`–`0x1f00898a`), **ohne ein einziges `unaff_*`**.
+Artefakt im Repo: `analysis/ota_worker_task_1f008784.c`.
+
+Parameter (aus `FUN_1f006c80(&LAB_1f008784_1, 0, 5, …)` in `ota_JsDlgt @ 0x1f0080dc`):
+
+| # | Typ | Bedeutung | Setzer |
+| :--- | :--- | :--- | :--- |
+| 1 | `char *` | `app_url` | `FUN_1f004e6c(…,"app_url", buf, 0x100, 0)` |
+| 2 | `char *` | `wifi_url` | `FUN_1f004e6c(…,"wifi_url", …)` |
+| 3 | `char *` | `mcu_url` | `FUN_1f004e6c(…,"mcu_url", …)` |
+| 4 | `char *` | `sequence` (≤ 8 Zeichen, Zielauswahl `a`/`w`/`m`) | `FUN_1f004e6c(…,"sequence", buf, 4, 0)` |
+| 5 | `byte` | `flags` = `no_reboot \| silent<<1` | `FUN_1f004e8e` |
+
+Rekonstruierter Ablauf (Adressen = Instruktionsadressen, Thumb-2):
+
+| Adresse | Beleg |
+| :--- | :--- |
+| `0x1f008784` | `push {r4-r11,lr}` / `sub sp,#0x14` — Callback-Einstieg (Queue-Eintrag `0x1f008785`, Thumb-Bit) |
+| `0x1f00878a`–`0x1f008796` | Argumente sichern: `r7=app_url`, `r6=wifi_url`, `r5=mcu_url`, `[sp]=sequence`, `[sp+4]=flags` |
+| `0x1f008798` | `bl 0x1f0084f8` — Guard/Lock; Rückgabe ≠ 0 ⇒ Abbruch ohne Download (Cleanup-Pfad) |
+| `0x1f0087a6` | `bl 0x1f00b400` — OTA-/HTTP-Kontext initialisieren |
+| `0x1f0087aa`–`0x1f0087ba` | Gewichte `0x20001bb4` (app), `0x20001bc8` (wifi), `0x20001bbc` (mcu) auf 0 |
+| `0x1f0087bc`–`0x1f0087f6` | je URL `FUN_1f042f5c(url,"http",4)==0` ⇒ Gewicht setzen: app `0x20`, wifi `0x10`, mcu `0x140` |
+| `0x1f0087fa`–`0x1f008808` | Summe der drei Gewichte == 0 ⇒ keine gültige URL ⇒ Fehlerpfad |
+| `0x1f00880c`–`0x1f00882a` | Zielliste: erstes Zeichen von `sequence` muss `a`/`w`/`m` sein, sonst Default `"wam"` (`0x1f06dbd0`); `FUN_1f042fd0(buf, seq, 8)` |
+| `0x1f00882e`–`0x1f008834` | `flags`-Bit 1 (`silent`) == 0 ⇒ `bl 0x1f008710` (State-Report initialisieren) |
+| `0x1f008838`–`0x1f00884e` | `FUN_1f043f7c()` (App-Passiv-Partition) und `FUN_1f04400c()` (MCU-Partition); schlägt einer fehl ⇒ `bFallback = true` |
+| `0x1f008852`–`0x1f0088ca` | Schleife `i=0..2` über die Zielliste: `'a'` ⇒ `FUN_1f008304(app_url)` (Fallback `FUN_1f008344`), `'w'` ⇒ `FUN_1f00835a(wifi_url)` (`FUN_1f0083fe`), `'m'` ⇒ `FUN_1f008414(mcu_url)` (`FUN_1f008474`); vorher OTA-State 1 (`FUN_1f0085b4(1)`), nach Erfolg Fortschritt = 100 (`0x20001124`/`0x2000112c`/`0x20001128`), Fehler ⇒ `iVar8 = 2` |
+| `0x1f0088cc`–`0x1f0088d8` | alle Ziele ok ⇒ `iVar8 = 1` |
+| `0x1f008900`–`0x1f008920` | Cleanup: alle vier Argument-Strings via `FUN_1f058de8` freigeben |
+| `0x1f008922`–`0x1f008936` | `iVar8 == 2` ⇒ OTA-State 5 (`"failed"`), `FUN_1f008758()` (Report), Rückgabe `0xffffffff` |
+| `0x1f008938`–`0x1f008968` | `iVar8 == 1` + Fallback: `no_reboot`(Bit 0) == 0 ⇒ State 3 (`"installing"`), `FUN_1f0582f4(6000)` (6 s), Report, `FUN_1f041d38()` (Reboot); sonst State 4 (`"installed"`) |
+| `0x1f00896a`–`0x1f00897e` | `iVar8 == 1` + Normalpfad: State 1, dann `FUN_1f008638(Zielliste, no_reboot)` (Install-Stage), `FUN_1f008758()`, Rückgabe = Rückgabe der Install-Stage |
+
+OTA-State-Tabelle `0x2000035c` (Strings ab `0x1f06dbd1`):
+`0 "idle"`, `1 "downloading"`, `2 "downloaded"`, `3 "installing"`, `4 "installed"`,
+`5 "failed"`, `6 "busy"`.
+
+### 4.2 MD5-Verifikation der Downloaddatei — byte-exakt belegt
+
+Kette (jede Stufe mit Adresse belegt):
+
+```
+ota_worker_task_1f008784 (0x1f008784)
+  └─ FUN_1f008304(app_url)                 0x1f008304   [analog FUN_1f00835a / FUN_1f008414]
+       ├─ FUN_1f043fc4()                   -> App-Passiv-Partitionshandle (FUN_1f0419b4(1,..))
+       └─ FUN_1f044058(url, partptr, 0)    0x1f044058
+            ├─ FUN_1f045890(url, &ctx, &resp, 0)
+            │     Rückgabe ≠ 0 -> "[%s]%sUnable to connect to server"
+            │     resp->status (resp+8) != 200 -> "[%s]%sHTTP Error %d"  -> -1
+            │     resp->chunked (resp+0x28) != 0 -> "HTTP chunked fs update is not supported"
+            │     Typ = *partptr, erlaubt {1,2,3,5,6}, sonst "Unknown type: %d" -> -1
+            └─ FUN_1f043ef8(…, http_ctx, resp->content_length (resp+0x2c), &typ)
+                 Typ 1 -> FUN_1f043450 -> FUN_1f04326c    (App/Firmware)  "Firmware update failed"
+                 Typ 2 -> FUN_1f044640                    (WiFi-FW)       "WiFi Firmware update failed"
+                 Typ 3 -> FUN_1f044890                    (FS)            "FS update failed"
+                 Typ 5/6 -> FUN_1f044298                  (User-FW/misc)  "User Firmware update failed"
+```
+
+`FUN_1f043ef8` setzt dabei `DAT_2000988c = 1` (Busy-Flag, verhindert Deep-Sleep) und
+löscht es bei Erfolg wieder.
+
+**Container-Vorprüfung** in `FUN_1f04326c(read_cb, ctx, content_length, part, post_cb)`:
+
+```
+0x1f04327c  if (content_length == 0)              -> "Firmware binary zero length"        -> -24583 (0xffff9ff9)
+0x1f043288  if (content_length > *(part+0x10))    -> "Firmware binary too large %d > %d"  -> -24583
+0x1f0432a4  Header (0x14 B) in Schleife vom Stream lesen (exakt 0x14 Bytes)
+            -> Fehler: "Failed to get firmware data for initial validation" -> -1
+0x1f0432d2  Magic-Prüfung:
+              word0 == 0x48464253  ("SBHF")                       -> OK, Klartext-Image
+              ODER word0 == 0x4c56524d ("MRVL") && word1 == 0x2e9cf17b -> OK, Container
+              sonst -> "File data is not a firmware file"          -> -24589 (0xffff9ff3)
+0x1f043304  Flash-Bereich vorbereiten (FUN_1f04403c) + löschen (FUN_1f0441cc)
+            -> Fehler: "Failed to erase firmware area "
+0x1f043350  Schreibschleife: erste Iteration = die 0x14 Header-Bytes, dann ≤0x100-Byte-Blöcke
+              FUN_1f044174(ctx, buf, n)  -> Fehler: "Failed to write firmware data"
+              read-Callback < 1          -> "http recv error/timeout, %d"
+0x1f043366  Fortschritt: DAT_20001124 = written*100/content_length
+0x1f04339c  "Validating firmware start ... filesize = %d"
+0x1f0433c0  Verifikation (nur wenn Header NICHT "SBHF"):
+              iVar1 = FUN_1f043e40(*(part+0xc) /* Flash-Adresse */, written)
+0x1f0433d4  Fehler: "[%s]%sFirmware verification failed with code %d"
+0x1f0433dc  Erfolg: "Validating firmware done"  -> 0
+```
+
+**Die MD5-Prüfung selbst** — `FUN_1f043e40(flash_addr, len)`:
+
+```c
+iVar2 = FUN_1f043004(0x20009866);                       // strlen(file_md5)
+if ((iVar2 == 0) ||                                     // kein md5 übergeben -> MD5 wird übersprungen
+    (iVar2 = FUN_1f043cdc(flash_addr,len,0x20009866), iVar2 == 0)) {
+        ... Container-Segment-CRC32-Prüfung ...         // siehe unten
+}
+return 0xffff9ff4;                                      // -24588 = Verifikation fehlgeschlagen
+```
+
+`FUN_1f043cdc(addr, len, expected_md5)`:
+
+```c
+FUN_1f06ca94(hex, 0, 0x21);                  // 33-Byte-Puffer für Hex-String
+handle = FUN_1f041e10(0);                    // Flash-Treiber
+buf    = FUN_1f058cf0(0x200);                // 512-Byte-Lesepuffer
+if (handle == 0 || buf == 0) return 0;       // ACHTUNG: ohne Flash-Handle/Malloc gilt "match"
+FUN_1f043b7c(ctx);                           // MD5-Init: 0x67452301,0xefcdab89,0x98badcfe,0x10325476
+while (len > 0) {                            // 512-Byte-Blöcke, READ-BACK aus dem Flash
+    n = min(len,0x200);
+    FUN_1f041dd4(handle, buf, n, addr);      //   Flash-Read
+    FUN_1f043ba8(ctx, buf, n);               //   MD5-Update (64-Bit-Bitzähler)
+    addr += n; len -= n;
+}
+FUN_1f043c20(digest, ctx);                   // MD5-Final (0x80-Padding, 16-Byte-Digest)
+free(buf);
+for (i = 0; i < 0x20; i += 2)                // 32 Hex-Zeichen, KLEINBUCHSTABEN
+    FUN_1f0423c4(hex+i, 3, "%02x", digest[i>>1]);
+return FUN_1f0423a8(hex, expected_md5, 0x20) != 0;   // 0 = identisch, 1 = MISMATCH
+```
+
+Damit ist der Ablauf eindeutig:
+
+* **Eingabe des Hashes:** die **Datei-Bytes, wie sie geschrieben wurden** — `FUN_1f04326c`
+  gibt `*(part+0xc)` (Flash-Basisadresse des Zielbereichs) und `written`
+  (= empfangene Content-Length, **inklusive** der 0x14 Header-Bytes) weiter. Der Hash
+  läuft über **Read-back aus dem Flash**, nicht über den RAM-Puffer (512-B-Blöcke).
+* **Sollwert:** global `0x20009866`, gefüllt von `ota_JsDlgt`:
+  `FUN_1f004e6c(…,"file_md5", buf, 0x21, 0)` → `FUN_1f043d90(buf)` →
+  `memcpy(0x20009866, buf, 0x21)`. Das ist eine **blinde 33-Byte-Kopie ohne
+  Normalisierung** ⇒ nur exakt passende Lowercase-Hex-Werte (32 Zeichen) bestehen die
+  Prüfung; `file_md5` in Großbuchstaben oder mit `0x`-Präfix scheitert.
+* **Vergleich:** `FUN_1f0423a8(hex, 0x20009866, 0x20)` = `memcmp`/`strncmp` über 32 Zeichen.
+* **Mismatch-Pfad:** `FUN_1f043cdc` → 1 ⇒ `FUN_1f043e40` → `0xffff9ff4` (-24588) ⇒
+  `FUN_1f04326c` loggt `"[%s]%sFirmware verification failed with code %d\r\n"` (-24588),
+  schließt den Treiber-Handle (`FUN_1f041e00`) und gibt `0xffff9ff4` zurück ⇒
+  `FUN_1f043ef8` loggt `"[%s]%sFirmware update failed\r\n"` ⇒ `FUN_1f044058` → `-1` ⇒
+  `FUN_1f008304` → `-1` ⇒ Worker `iVar8 = 2` ⇒ OTA-State 5 `"failed"`,
+  `report_ota_state`, Rückgabe `0xffffffff` — **kein Reboot**.
+* **Zweite Ebene (nur MRVL-Container):** `FUN_1f043e40` liest nach dem MD5 den
+  Container-Header (`0x14 B` je Eintrag, Magic `"MRVL"` + `0x2e9cf17b`), iteriert
+  `local_2c` Segmente und prüft für Segmente vom Typ 2 die **Hardware-CRC32** (Marvell
+  CRC-Engine, `FUN_1f043da4`) gegen den im Header hinterlegten Sollwert; Abweichung ⇒
+  ebenfalls `0xffff9ff4`. Segmente der Typen 1/3/4 werden übersprungen.
+* **Reine `"SBHF"`-Images** (kein MRVL-Container) überspringen MD5 + CRC komplett
+  (`if (local_158[0] == 0x48464253) return 0;`) — dort prüft der Bootloader.
+* **Randfall (ehrlich vermerkt):** schlägt der Flash-Treiber-Init oder das
+  `FUN_1f058cf0(0x200)`-Malloc fehl, liefert `FUN_1f043cdc` **0 = "match"**, d. h. die
+  MD5-Prüfung wird in diesem Fehlerfall stillschweigend als bestanden gewertet (der
+  CRC32-Teil läuft weiter und schlägt dann über den Treiber-Handle fehl).
 
 ## 5. `-9999 user ack timeout` / `set_ps` / `developer_mode`
 

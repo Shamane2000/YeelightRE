@@ -51,19 +51,32 @@ Modul-Deskriptor `"miIO"` @ `0x1f0067f8` (registriert von `FUN_1f0065f8`):
 `FUN_1f008e10(0)` findet keinen Token ⇒ Neuerzeugung ⇒ alter App-Token ungültig.
 Cloud-Sync der DID danach via `_sync.neighborDevInfo` (`FUN_1f010cd4`).
 
-## OTA-Prüfung (Kurzfassung)
+## OTA-Prüfung (byte-exakt belegt)
 
 1. Magic `0xd431` im Request-Header (`*(int16*)(msg+0x10)`), Bypass-Flag `0x20001bb0`.
-2. `file_md5` wird eingelesen und normalisiert (`FUN_1f043d90`); Payload ist
-   **XZ-komprimiert** (Magic `\xfd7zXZ`, Strings `"user fw download failed, downloaded=%u, total=%u\n\r"`,
-   `"WiFi Firmware binary zer…"`).
-3. Antwort `ok` **vor** dem Download (`FUN_1f03c2fc`), Arbeit wird an Worker
-   `0x1f007884` übergeben (Queue via `FUN_1f006c80`).
-4. Fehlerantworten: `"invalied"` (-1), `"no mem"` (-5) via `FUN_1f03c1f4`.
+2. `file_md5` (0x21 B via `FUN_1f004e6c`) → `FUN_1f043d90` → `memcpy(0x20009866, buf, 0x21)`.
+   **Blindkopie ohne Normalisierung** ⇒ nur Lowercase-Hex (32 Zeichen) besteht die Prüfung.
+3. Antwort `ok` **vor** dem Download (`FUN_1f03c2fc`); Arbeit geht an den Worker
+   `ota_worker_task_1f008784` @ `0x1f008784` (518 B, Queue via `FUN_1f006c80`) →
+   je Ziel `FUN_1f008304` / `FUN_1f00835a` / `FUN_1f008414` (App / WiFi / MCU) →
+   `FUN_1f044058` (HTTP 200 + Content-Length) → `FUN_1f043450` → `FUN_1f04326c`.
+4. Container-Vorprüfung: Header `"SBHF"` (`0x48464253`) oder `"MRVL"`+`0x2e9cf17b`,
+   sonst `"File data is not a firmware file"` (-24589). **Kein XZ** im OTA-Pfad.
+5. Stream-Schreiben in ≤0x100-Byte-Blöcken nach Flash; Fortschritt `0x20001124 = written*100/total`.
+6. **MD5-Verifikation:** `FUN_1f04326c` → `FUN_1f043e40(flash_addr, written)` →
+   `FUN_1f043cdc`: Read-back der geschriebenen Bytes (512-B-Blöcke) aus dem Flash,
+   MD5 mit eigener Implementierung (`FUN_1f043b7c`/`ba8`/`c20`, IV
+   `0x67452301`/`0xefcdab89`/`0x98badcfe`/`0x10325476`), Digest → 32× `"%02x"` →
+   `memcmp(hex, 0x20009866, 32)`. Hashes Eingabe = die Datei-Bytes inkl. 0x14-Byte-Header.
+7. Zusätzlich (nur MRVL-Container): Hardware-CRC32 je Segment (Typ 2) gegen Sollwert im
+   Container-Header. Reine `"SBHF"`-Images überspringen 6./7. (Bootloader prüft).
+8. Mismatch-Pfad: `0xffff9ff4` (-24588) → `"Firmware verification failed with code %d"` →
+   `"Firmware update failed"` → Worker: OTA-State 5 `"failed"`, Antwort `0xffffffff`, **kein Reboot**.
+   Erfolg: State 3 `"installing"` + Reboot nach 6 s bzw. State 4 `"installed"` bei `no_reboot`.
+9. Fehlerantworten: `"invalied"` (-1), `"no mem"` (-5) via `FUN_1f03c1f4`.
 
-Der Worker-Bereich `0x1f00787c`–`0x1f00799b` ist noch unvollständig rekonstruiert
-(Decompiler liefert registerbasierte Ausgabe) — die byte-exakte MD5-Verifikation
-der Downloaddatei ist **offener Punkt** (siehe Analyse-Datei, Abschnitt 4).
+Reproduktion: `analysis/ota_worker_task_1f008784.c` (via
+`re_scripts/DecompAt.java`) und `analysis/88mw302_miio_re.md` Abschnitt 4.1/4.2.
 
 ## Negativbefund `-9999 user ack timeout` / `set_ps`
 
