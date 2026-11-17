@@ -1,0 +1,12 @@
+# LAN-RPC-Probe Yeelight color fw65 (192.168.1.168), 2026-11-17T22:42:41+00:00
+# Repo: Shamane2000/YeelightRE @ 0c9c599  Tool: tools/lan_method_probe.py
+======================================================================
+DEVICE 192.168.1.168
+  get_prop['fw_ver', 'model', 'lan_ctrl', 'power'] {"id": 1, "result": ["65", "color", "1", "off"]}
+  get_prop['lan_ctrl']       {"id": 2, "result": ["1"]}
+  get_ps['cfg_lan_ctrl']     {"id": 3, "error": {"code": -1, "message": "method not supported"}}
+  get_aging_status[]         {"id": 0, "error": {"code": -1, "message": "invalid command"}}
+  miio_test[]                {"id": 5, "error": {"code": -1, "message": "method not supported"}}
+  __probe_no_such_method__[] {"id": 0, "error": {"code": -1, "message": "invalid command"}}
+  set_ps[cfg_lan_ctrl,1]     {"id": 90, "error": {"code": -1, "message": "method not supported"}}
+  readback get_prop          {"id": 91, "result": ["1"]}
