@@ -56,7 +56,8 @@ seg3 @ 0x20000040  (.data-Init, >SRAM; enthält die Methoden-Whitelist)
 ```
 
 Werkzeug: `tools/mrvl_fw_inspect.py --extract`, `tools/mrvl_method_surface.py` (neu),
-`tools/mrvl_disasm.py` (neu, capstone Thumb-2), `tools/color2_make_elf.py` (ELF-Bau für Ghidra).
+`tools/mrvl_disasm.py` (neu, capstone Thumb-2), `tools/color_verify_diff.py` (neu,
+deterministischer Verifier, 51 Assertions), `tools/color2_make_elf.py` (ELF-Bau für Ghidra).
 
 ---
 
@@ -198,6 +199,8 @@ python3 tools/mrvl_method_surface.py firmware/color1_142_0061/upd_yeelink.light.
 python3 tools/mrvl_disasm.py firmware/color1_142_0061/unpacked 0x1f00fe74 0x1f00ffe8
 # 4. Live-Gate am Geraet pruefen (TCP 55443, rein lesend + idempotenter set_ps-Test)
 python3 tools/lan_method_probe.py 192.168.1.168
+# 5. Alle Befunde dieses Dokuments deterministisch gegen die Rohbinaries pruefen
+python3 tools/color_verify_diff.py        # rc=0 == PASS (51 Assertions)
 ```
 
 `tools/mrvl_disasm.py` braucht `capstone` (`pip install capstone`, auf devastator im venv
