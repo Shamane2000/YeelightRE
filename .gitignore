@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.apk
+*.pdf
+*.bin
+*.elf
+ghidra_workspace/
+jadx_out/
