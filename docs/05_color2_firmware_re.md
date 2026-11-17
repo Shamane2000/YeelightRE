@@ -59,6 +59,9 @@ Statische Analyse in Ghidra 12.1.4 (ARM Cortex-M4, Thumb-2, LE).
 
 * Alle Adressen per Ghidra-Decompilat **und** Byte-Readback der Segmente geprüft
   (Property-Namen, Whitelist-Strings, Tabelleninhalte, Fehler-Strings).
+* Automatisierter Nachweis: `python3 tools/color2_verify_findings.py` → **43/43 PASS, RC=0**
+  (prüft Segmentgrenzen, Reset-Vektor, alle 5 Dispatcher-Pools, die 20 Whitelist-Einträge,
+  47er/31er-Tabelle, 5 Fehler-Strings, 9 `set_ps`-Literale, PWM-Anker).
 * Kein dynamischer Nachweis (kein Gerät geflasht, kein JTAG/UART-Trace) — reine Statik.
 * Offen: Ziel der Treiber-Vtable (`+0x44`) bzw. die PWM-Registerbasis des 88MW302-LED-Blocks;
   statischer Caller des `config_router`-Pfads (UDP-Seite).
