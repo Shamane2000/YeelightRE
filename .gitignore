@@ -7,3 +7,8 @@ __pycache__/
 *.elf
 ghidra_workspace/
 jadx_out/
+
+# grosse Firmware-/APK-/Referenz-Artefakte (nicht versionieren)
+firmware/
+apk/
+re_sources/
