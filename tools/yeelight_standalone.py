@@ -317,18 +317,28 @@ def cmd_provision(args: argparse.Namespace) -> int:
     else:
         password = getpass.getpass(f"Wi-Fi password for '{ssid}': ")
 
-    # Enable LAN Control (developer mode) BEFORE switching from AP to home Wi-Fi
-    # (once connected to a router with internet, the bulb rotates its miIO token).
+    # Enable LAN Control BEFORE switching from AP to home Wi-Fi:
+    # 'set_developer_mode' is only a python-miio wrapper; the real device RPC is set_ps ["cfg_lan_ctrl", "1"].
+    for attempt in range(1, 4):
+        try:
+            lan_res = miio_send(ap_ip, token, "set_ps", ["cfg_lan_ctrl", "1"], req_id=1 + attempt, timeout=2.5)
+            print(f"AP set_ps ['cfg_lan_ctrl', '1'] (try {attempt}) response:", lan_res)
+            if isinstance(lan_res, dict) and lan_res.get("result") == ["ok"]:
+                break
+        except Exception as exc:
+            print(f"Warning: AP set_ps try {attempt} failed ({exc})")
     try:
-        lan_res = miio_send(ap_ip, token, "set_developer_mode", [1], req_id=2)
-        print("AP pre-enable set_developer_mode response:", lan_res)
+        prop_res = miio_send(ap_ip, token, "get_prop", ["lan_ctrl"], req_id=10, timeout=2.5)
+        print("AP get_prop ['lan_ctrl'] readback:", prop_res)
     except Exception as exc:
-        print(f"Warning: AP set_developer_mode failed ({exc}), trying config_router anyway...")
+        print(f"Warning: AP get_prop ['lan_ctrl'] failed ({exc})")
 
     params = {"ssid": ssid, "passwd": password, "uid": args.uid}
+    if args.tz:
+        params["tz"] = args.tz
     if args.region:
         params["country_domain"] = args.region
-    res = miio_send(ap_ip, token, "miIO.config_router", params, req_id=3)
+    res = miio_send(ap_ip, token, "miIO.config_router", params, req_id=11)
     print("miIO.config_router response:", res)
     print("\nOnce connected to your home Wi-Fi, Home Assistant should auto-discover it via SSDP on port 55443.")
     print(f"If LAN Control is still off and internet was blocked, fallback:\n  python3 {sys.argv[0]} enable-lan --ip <NEW_LAN_IP> --token {token}")
@@ -336,9 +346,13 @@ def cmd_provision(args: argparse.Namespace) -> int:
 
 
 def cmd_enable_lan(args: argparse.Namespace) -> int:
-    print(f"Sending set_developer_mode=1 to {args.ip}...")
-    res = miio_send(args.ip, args.token, "set_developer_mode", [1], req_id=1)
-    print("set_developer_mode response:", res)
+    print(f"Sending set_ps ['cfg_lan_ctrl', '1'] to {args.ip}...")
+    res = miio_send(args.ip, args.token, "set_ps", ["cfg_lan_ctrl", "1"], req_id=1)
+    print("set_ps response:", res)
+    try:
+        print("get_prop ['lan_ctrl']:", miio_send(args.ip, args.token, "get_prop", ["lan_ctrl"], req_id=2))
+    except Exception as exc:
+        print(f"get_prop warning: {exc}")
     print("Testing TCP 55443:", check_tcp_55443(args.ip))
     return 0
 
@@ -356,6 +370,7 @@ def main() -> int:
     p_prov.add_argument("--ssid", default="", help="Target 2.4GHz Wi-Fi SSID (prompted if omitted)")
     p_prov.add_argument("--password", help="Wi-Fi password (prompted if omitted)")
     p_prov.add_argument("--uid", type=int, default=0, help="miIO uid (default: 0)")
+    p_prov.add_argument("--tz", default="Europe/Berlin", help="Timezone for miIO.config_router (default: Europe/Berlin)")
     p_prov.add_argument("--region", default="", help="Optional country_domain (e.g. de, cn)")
     p_prov.set_defaults(func=cmd_provision)
 
