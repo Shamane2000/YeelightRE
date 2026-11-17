@@ -15,3 +15,7 @@ re_sources/
 
 # abgeleitete const-string-Dumps (regenerierbar via tools/apk_stringsets.py)
 analysis/apk_excerpts/strings_*.txt
+
+# Fehler-Logs von Extraktionslaeufen (nicht versionieren)
+*.err
+.venv-ag/

@@ -2,259 +2,1606 @@
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$10;
 
---- <clinit>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <clinit>  (11 instr)
+     0  invoke-static Lcom/miot/service/connection/wifi/ErrorCode;->values()[Lcom/miot/service/connection/wifi/ErrorCode;
+     1  move-result-object v0
+     2  array-length v0, v0
+     3  new-array v0, v0, [I
+     4  sput-object v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$10;->$SwitchMap$com$miot$service$connection$wifi$ErrorCode [I
+     5  sget-object v1, Lcom/miot/service/connection/wifi/ErrorCode;->SUCCESS Lcom/miot/service/connection/wifi/ErrorCode;
+     6  invoke-virtual v1, Ljava/lang/Enum;->ordinal()I
+     7  move-result v1
+     8  const/4 v2, 1
+     9  aput v2, v0, v1
+    10  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$2;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- run  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- run  (27 instr)
+     0  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$000(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+     2  move-result v0
+     3  if-nez v0, +032h
+     4  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     5  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$100(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Landroid/net/wifi/ScanResult;
+     6  move-result-object v1
+     7  invoke-virtual v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->isDeviceApConnected(Landroid/net/wifi/ScanResult;)Z
+     8  move-result v0
+     9  if-eqz v0, +026h
+    10  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    11  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$000(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+    12  move-result v1
+    13  invoke-virtual v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->onCurrentIndexSuccess(I)V
+    14  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    15  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    16  move-result-object v0
+    17  const/16 v1, 123
+    18  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+    19  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    20  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startConnectionAsso()V
+    21  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    22  const/4 v1, 1
+    23  invoke-static v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$002(Lcom/miot/service/connection/wifi/step/ApConfigStep; I)I
+    24  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    25  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$208(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+    26  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$3$1;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$3;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- run  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- run  (4 instr)
+     0  iget-object v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$3;
+     1  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     2  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startConnectToDeviceAp()V
+     3  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$3$2;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$2;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$3;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- run  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- run  (4 instr)
+     0  iget-object v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$2;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$3;
+     1  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     2  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$300(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+     3  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$4;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- run  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- run  (16 instr)
+     0  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$000(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+     2  move-result v0
+     3  const/4 v1, 1
+     4  if-eq v0, v1, +01ah
+     5  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     6  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startConnectionAsso()V
+     7  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     8  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$000(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+     9  move-result v2
+    10  invoke-virtual v0, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->onCurrentIndexSuccess(I)V
+    11  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    12  invoke-static v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$002(Lcom/miot/service/connection/wifi/step/ApConfigStep; I)I
+    13  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    14  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$208(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+    15  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$5$1;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$5;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- run  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- run  (4 instr)
+     0  iget-object v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$5;
+     1  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     2  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->triggerTimeoutNow()V
+     3  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$5$2;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$2;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$5;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- run  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- run  (4 instr)
+     0  iget-object v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$2;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$5;
+     1  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     2  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->triggerTimeoutNow()V
+     3  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$6;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$6;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- onClick  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onClick  (13 instr)
+     0  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$6;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  iget-object v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+     2  iget-object v1, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+     3  invoke-static v4, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$100(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Landroid/net/wifi/ScanResult;
+     4  move-result-object v4
+     5  iget-object v4, v4, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+     6  iget-object v2, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$6;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     7  iget-object v2, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+     8  invoke-static v0, v1, v4, v2, Lcom/miot/service/connection/wifi/ConnectionUtils;->disconnectAp(Landroid/net/ConnectivityManager; Landroid/net/wifi/WifiManager; Ljava/lang/String; Lcom/miot/service/connection/wifi/QConnectCallback;)V
+     9  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$6;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    10  const/4 v0, 1
+    11  invoke-virtual v4, v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->finishSmartConfig(Z)V
+    12  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (4 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+     1  iput-object v2, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->val$content Ljava/lang/String;
+     2  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     3  return-void 
 
---- run  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- run  (80 instr)
+     0  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+     1  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     2  iget-object v1, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->val$content Ljava/lang/String;
+     3  invoke-virtual v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep;->parseRpcResponse(Ljava/lang/String;)Lorg/json/JSONObject;
+     4  move-result-object v0
+     5  if-nez v0, +01ch
+     6  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+     7  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     8  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     9  move-result-object v0
+    10  if-eqz v0, +011h
+    11  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    12  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    13  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    14  move-result-object v0
+    15  const/16 v1, 114
+    16  const-wide/16 v2, 1000
+    17  invoke-virtual v0, v1, v2, v3, Landroid/os/Handler;->sendEmptyMessageDelayed(I J)Z
+    18  return-void 
+    19  iget-object v1, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    20  iget-object v1, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    21  const-string v2, "did"
+    22  invoke-virtual v0, v2, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    23  move-result-object v2
+    24  invoke-static v2, Ljava/lang/Long;->valueOf(Ljava/lang/String;)Ljava/lang/Long;
+    25  move-result-object v2
+    26  invoke-virtual v2, Ljava/lang/Long;->longValue()J
+    27  move-result-wide v2
+    28  invoke-static v1, v2, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$402(Lcom/miot/service/connection/wifi/step/ApConfigStep; J)J
+    29  iget-object v1, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    30  iget-object v1, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    31  const-string v2, "token"
+    32  invoke-virtual v0, v2, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    33  move-result-object v0
+    34  invoke-static v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$502(Lcom/miot/service/connection/wifi/step/ApConfigStep; Ljava/lang/String;)Ljava/lang/String;
+    35  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    36  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    37  iget-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    38  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$400(Lcom/miot/service/connection/wifi/step/ApConfigStep;)J
+    39  move-result-wide v2
+    40  invoke-static v2, v3, Ljava/lang/String;->valueOf(J)Ljava/lang/String;
+    41  move-result-object v0
+    42  iget-object v2, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    43  iget-object v2, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    44  invoke-static v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$500(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Ljava/lang/String;
+    45  move-result-object v2
+    46  invoke-virtual v1, v0, v2, Lcom/miot/service/connection/wifi/DeviceFinder;->addToken(Ljava/lang/String; Ljava/lang/String;)V
+    47  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    48  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    49  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->getGatewayAddr()Ljava/lang/String;
+    50  move-result-object v1
+    51  invoke-static v1, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    52  move-result v0
+    53  if-eqz v0, +003h
+    54  return-void 
+    55  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+    56  move-result-object v0
+    57  const-string v2, "ApConfigStep"
+    58  const-string v3, "setmiiorouter begin"
+    59  invoke-virtual v0, v2, v3, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    60  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    61  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    62  const/4 v2, 1
+    63  invoke-static v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$602(Lcom/miot/service/connection/wifi/step/ApConfigStep; Z)Z
+    64  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    65  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->val$object Lorg/json/JSONObject;
+    66  invoke-virtual v0, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+    67  move-result-object v2
+    68  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    69  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    70  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$400(Lcom/miot/service/connection/wifi/step/ApConfigStep;)J
+    71  move-result-wide v3
+    72  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    73  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    74  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$500(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Ljava/lang/String;
+    75  move-result-object v5
+    76  new-instance v6, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;
+    77  invoke-direct v6, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;)V
+    78  invoke-static/range v1 ... v6, Lcom/xiaomi/miio/MiioLocalAPI;->async_rpc(Ljava/lang/String; Ljava/lang/String; J Ljava/lang/String; Lcom/xiaomi/miio/MiioLocalRpcResponse;)V
+    79  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$9;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- onClick  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onClick  (51 instr)
+     0  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  iget-object v3, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+     2  invoke-virtual v3, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
+     3  move-result-object v3
+     4  const-string v4, "wifi"
+     5  invoke-virtual v3, v4, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+     6  move-result-object v3
+     7  check-cast v3, Landroid/net/wifi/WifiManager;
+     8  if-eqz v3, +007h
+     9  invoke-virtual v3, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+    10  move-result-object v4
+    11  goto +2h
+    12  const/4 v4, 0
+    13  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    14  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$100(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Landroid/net/wifi/ScanResult;
+    15  move-result-object v0
+    16  if-eqz v0, +02dh
+    17  if-eqz v4, +02bh
+    18  iget-object v4, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    19  invoke-static v4, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$100(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Landroid/net/wifi/ScanResult;
+    20  move-result-object v4
+    21  iget-object v4, v4, Landroid/net/wifi/ScanResult;->BSSID Ljava/lang/String;
+    22  invoke-virtual v3, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+    23  move-result-object v3
+    24  invoke-virtual v3, Landroid/net/wifi/WifiInfo;->getBSSID()Ljava/lang/String;
+    25  move-result-object v3
+    26  invoke-virtual v4, v3, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
+    27  move-result v3
+    28  if-eqz v3, +015h
+    29  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    30  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    31  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+    32  invoke-static v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$100(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Landroid/net/wifi/ScanResult;
+    33  move-result-object v3
+    34  iget-object v3, v3, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+    35  iget-object v1, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    36  iget-object v1, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    37  invoke-static v4, v0, v3, v1, Lcom/miot/service/connection/wifi/ConnectionUtils;->disconnectAp(Landroid/net/ConnectivityManager; Landroid/net/wifi/WifiManager; Ljava/lang/String; Lcom/miot/service/connection/wifi/QConnectCallback;)V
+    38  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    39  iget-object v3, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    40  if-eqz v3, +00fh
+    41  invoke-virtual v3, Lcom/miot/service/connection/wifi/DeviceFinder;->isFindingNew()Z
+    42  move-result v3
+    43  if-eqz v3, +009h
+    44  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    45  iget-object v3, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    46  invoke-virtual v3, Lcom/miot/service/connection/wifi/DeviceFinder;->stopScanNewDevice()V
+    47  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    48  const/4 v4, 1
+    49  invoke-virtual v3, v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->finishSmartConfig(Z)V
+    50  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$1;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$1;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- onDeviceConnectionBind  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onDeviceConnectionBind  (4 instr)
+     0  iget-object v2, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$1;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  const/4 v0, 3
+     2  invoke-virtual v2, v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->onCurrentIndexSuccess(I)V
+     3  return-void 
 
---- onDeviceConnectionFailure  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onDeviceConnectionFailure  (1 instr)
+     0  return-void 
 
---- onDeviceConnectionSuccess  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onDeviceConnectionSuccess  (4 instr)
+     0  iget-object v2, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$1;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  const/4 v0, 3
+     2  invoke-virtual v2, v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->onCurrentIndexSuccess(I)V
+     3  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$3;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- onFailure  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onFailure  (23 instr)
+     0  new-instance v0, Ljava/lang/StringBuilder;
+     1  invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+     2  const-string v1, "BleComboStep.getBindKey code: "
+     3  invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     4  invoke-virtual v0, v3, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+     5  const-string v3, ", des:"
+     6  invoke-virtual v0, v3, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  invoke-virtual v0, v4, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     8  invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     9  move-result-object v3
+    10  invoke-static v3, Lcom/inuker/bluetooth/library/utils/BluetoothLog;->w(Ljava/lang/String;)V
+    11  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    12  invoke-virtual v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    13  move-result-object v3
+    14  if-eqz v3, +012h
+    15  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    16  invoke-virtual v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    17  move-result-object v3
+    18  new-instance v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$2;
+    19  invoke-direct v4, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$2;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep$3;)V
+    20  const-wide/16 v0, 2000
+    21  invoke-virtual v3, v4, v0, v1, Landroid/os/Handler;->postDelayed(Ljava/lang/Runnable; J)Z
+    22  return-void 
 
---- onSuccess  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onSuccess  (24 instr)
+     0  new-instance v0, Ljava/lang/StringBuilder;
+     1  invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+     2  const-string v1, "BleComboStep.getBindKey: "
+     3  invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     4  invoke-virtual v0, v3, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+     5  invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     6  move-result-object v0
+     7  invoke-static v0, Lcom/inuker/bluetooth/library/utils/BluetoothLog;->w(Ljava/lang/String;)V
+     8  if-eqz v3, +012h
+     9  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    10  const-string v1, "result"
+    11  invoke-virtual v3, v1, Lorg/json/JSONObject;->optJSONObject(Ljava/lang/String;)Lorg/json/JSONObject;
+    12  move-result-object v3
+    13  const-string v1, "bindkey"
+    14  invoke-virtual v3, v1, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    15  move-result-object v3
+    16  iput-object v3, v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->mBindkey Ljava/lang/String;
+    17  iget-object v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    18  iget-object v3, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    19  check-cast v3, Landroid/app/Activity;
+    20  new-instance v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$1;
+    21  invoke-direct v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$3$1;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep$3;)V
+    22  invoke-virtual v3, v0, Landroid/app/Activity;->runOnUiThread(Ljava/lang/Runnable;)V
+    23  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$5;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Lcom/miot/service/connection/wifi/QConnectCallback;-><init>()V
+     2  return-void 
 
---- onAvailable  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onAvailable  (16 instr)
+     0  invoke-super v2, v3, Lcom/miot/service/connection/wifi/QConnectCallback;->onAvailable(Landroid/net/Network;)V
+     1  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     2  move-result-object v3
+     3  new-instance v0, Ljava/lang/StringBuilder;
+     4  invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+     5  const-string v1, "connectToAP ok: "
+     6  invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  iget-object v1, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     8  invoke-static v1, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$100(Lcom/miot/service/connection/wifi/step/ApConfigStep;)Landroid/net/wifi/ScanResult;
+     9  move-result-object v1
+    10  iget-object v1, v1, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+    11  invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    12  invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    13  move-result-object v0
+    14  invoke-virtual v3, v0, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String;)V
+    15  return-void 
 
---- onLost  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onLost  (16 instr)
+     0  invoke-super v1, v2, Lcom/miot/service/connection/wifi/QConnectCallback;->onLost(Landroid/net/Network;)V
+     1  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     2  move-result-object v2
+     3  const-string v0, "connecttoAp onLost "
+     4  invoke-virtual v2, v0, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String;)V
+     5  iget-object v2, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     6  invoke-static v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$000(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+     7  move-result v2
+     8  if-nez v2, +010h
+     9  iget-object v2, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    10  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    11  move-result-object v2
+    12  new-instance v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$2;
+    13  invoke-direct v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$2;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep$5;)V
+    14  invoke-virtual v2, v0, Landroid/os/Handler;->post(Ljava/lang/Runnable;)Z
+    15  return-void 
 
---- onUnavailable  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onUnavailable  (16 instr)
+     0  invoke-super v2, Lcom/miot/service/connection/wifi/QConnectCallback;->onUnavailable()V
+     1  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     2  move-result-object v0
+     3  const-string v1, "connectToAP onUnavailable!"
+     4  invoke-virtual v0, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String;)V
+     5  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     6  invoke-static v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$000(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+     7  move-result v0
+     8  if-nez v0, +010h
+     9  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    10  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    11  move-result-object v0
+    12  new-instance v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$1;
+    13  invoke-direct v1, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$5$1;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep$5;)V
+    14  invoke-virtual v0, v1, Landroid/os/Handler;->post(Ljava/lang/Runnable;)Z
+    15  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;->this$2 Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- onResponse  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onResponse  (56 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  new-instance v1, Ljava/lang/StringBuilder;
+     3  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     4  const-string v2, "setmiiorouter result:"
+     5  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  invoke-virtual v1, v5, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     8  move-result-object v1
+     9  const-string v2, "ApConfigStep"
+    10  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    11  iget-object v0, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;->this$2 Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+    12  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    13  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    14  invoke-virtual v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->parseRpcResponse(Ljava/lang/String;)Lorg/json/JSONObject;
+    15  move-result-object v5
+    16  const-wide/16 v0, 1000
+    17  if-nez v5, +028h
+    18  iget-object v5, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;->this$2 Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+    19  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    20  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    21  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    22  move-result-object v5
+    23  if-eqz v5, +040h
+    24  iget-object v5, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;->this$2 Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+    25  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    26  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    27  invoke-static v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->access$000(Lcom/miot/service/connection/wifi/step/ApConfigStep;)I
+    28  move-result v5
+    29  const/4 v2, 1
+    30  if-ne v5, v2, +033h
+    31  iget-object v5, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;->this$2 Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+    32  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    33  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    34  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    35  move-result-object v5
+    36  const/16 v2, 114
+    37  goto +22h
+    38  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+    39  move-result-object v5
+    40  const-string v3, "send MSG_UPDATE_DEVICE_STATE"
+    41  invoke-virtual v5, v2, v3, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    42  iget-object v5, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;->this$2 Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+    43  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    44  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    45  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    46  move-result-object v5
+    47  if-eqz v5, +011h
+    48  iget-object v5, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;->this$2 Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+    49  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;->this$1 Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    50  iget-object v5, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    51  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    52  move-result-object v5
+    53  const/16 v2, 112
+    54  invoke-virtual v5, v2, v0, v1, Landroid/os/Handler;->sendEmptyMessageDelayed(I J)Z
+    55  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (4 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  iput-object v2, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->val$object Lorg/json/JSONObject;
+     2  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     3  return-void 
 
---- onResponse  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onResponse  (22 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  new-instance v1, Ljava/lang/StringBuilder;
+     3  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     4  const-string v2, "async_get_token response:"
+     5  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  invoke-virtual v1, v4, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     8  move-result-object v1
+     9  const-string v2, "ApConfigStep"
+    10  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    11  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    12  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    13  move-result-object v0
+    14  if-eqz v0, +010h
+    15  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+    16  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    17  move-result-object v0
+    18  new-instance v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+    19  invoke-direct v1, v3, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep$7; Ljava/lang/String;)V
+    20  invoke-virtual v0, v1, Landroid/os/Handler;->post(Ljava/lang/Runnable;)Z
+    21  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$8;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (3 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep$8;->this$0 Lcom/miot/service/connection/wifi/step/ApConfigStep;
+     1  invoke-direct v0, Ljava/lang/Object;-><init>()V
+     2  return-void 
 
---- onResponse  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onResponse  (1 instr)
+     0  return-void 
 
 ==============================================================================
 ### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep;
 
---- <init>  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- <init>  (33 instr)
+     0  invoke-direct v5, Lcom/miot/service/connection/wifi/step/ConfigStep;-><init>()V
+     1  new-instance v0, Ljava/util/ArrayList;
+     2  invoke-direct v0, Ljava/util/ArrayList;-><init>()V
+     3  iput-object v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mConfigStageList Ljava/util/ArrayList;
+     4  const/4 v0, 0
+     5  iput v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mSendPasswdTime I
+     6  iput v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mFindDeviceTime I
+     7  iput-boolean v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mGotoErrorPage Z
+     8  new-instance v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$1;
+     9  invoke-direct v1, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep$1;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    10  iput-object v1, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCallback Lcom/miot/service/connection/wifi/step/ConfigStep$DeviceFinderCallback;
+    11  new-instance v1, Lcom/miot/service/connection/wifi/DeviceFinder;
+    12  iget-object v2, v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    13  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    14  move-result-object v3
+    15  const-string v4, "people"
+    16  invoke-virtual v3, v4, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String;)Ljava/lang/Object;
+    17  move-result-object v3
+    18  check-cast v3, Lcom/miot/common/people/People;
+    19  invoke-direct v1, v2, v3, Lcom/miot/service/connection/wifi/DeviceFinder;-><init>(Landroid/content/Context; Lcom/miot/common/people/People;)V
+    20  iput-object v1, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    21  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    22  move-result-object v1
+    23  const-string v2, "find_device_time"
+    24  invoke-static v0, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+    25  move-result-object v0
+    26  invoke-virtual v1, v2, v0, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String; Ljava/lang/Object;)Ljava/lang/Object;
+    27  move-result-object v0
+    28  check-cast v0, Ljava/lang/Integer;
+    29  invoke-virtual v0, Ljava/lang/Integer;->intValue()I
+    30  move-result v0
+    31  iput v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mFindDeviceTime I
+    32  return-void 
 
---- access$000  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$000  (2 instr)
+     0  iget v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     1  return v0
 
---- access$002  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$002  (2 instr)
+     0  iput v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     1  return v1
 
---- access$100  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$100  (2 instr)
+     0  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mScanResult Landroid/net/wifi/ScanResult;
+     1  return-object v0
 
---- access$208  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$208  (4 instr)
+     0  iget v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mSendPasswdTime I
+     1  add-int/lit8 v1, v0, 1
+     2  iput v1, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mSendPasswdTime I
+     3  return v0
 
---- access$300  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$300  (2 instr)
+     0  invoke-direct v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->getBindkey()V
+     1  return-void 
 
---- access$400  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$400  (2 instr)
+     0  iget-wide v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDid J
+     1  return-wide v0
 
---- access$402  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$402  (2 instr)
+     0  iput-wide v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDid J
+     1  return-wide v1
 
---- access$500  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$500  (2 instr)
+     0  iget-object v0, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mToken Ljava/lang/String;
+     1  return-object v0
 
---- access$502  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$502  (2 instr)
+     0  iput-object v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mToken Ljava/lang/String;
+     1  return-object v1
 
---- access$602  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- access$602  (2 instr)
+     0  iput-boolean v1, v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mHasSendWificonfig Z
+     1  return v1
 
---- getBindkey  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- getBindkey  (16 instr)
+     0  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mBindkey Ljava/lang/String;
+     1  invoke-static v0, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+     2  move-result v0
+     3  if-nez v0, +006h
+     4  invoke-virtual v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startConnectToDeviceAp()V
+     5  return-void 
+     6  new-instance v0, Lorg/json/JSONObject;
+     7  invoke-direct v0, Lorg/json/JSONObject;-><init>()V
+     8  invoke-static Lcom/miot/service/common/manager/ServiceManager;->getInstance()Lcom/miot/service/common/manager/ServiceManager;
+     9  move-result-object v1
+    10  invoke-virtual v1, Lcom/miot/service/common/manager/ServiceManager;->getPeople()Lcom/miot/common/people/People;
+    11  move-result-object v1
+    12  new-instance v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;
+    13  invoke-direct v2, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$3;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    14  invoke-static v1, v0, v2, Lcom/miot/service/common/miotcloud/MiotCloudApi;->getBindKey(Lcom/miot/common/people/People; Lorg/json/JSONObject; Lcom/miot/service/common/miotcloud/MiotCloud$ResponseHandler;)V
+    15  return-void 
 
---- getAllConfigStages  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- getAllConfigStages  (45 instr)
+     0  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mConfigStageList Ljava/util/ArrayList;
+     1  invoke-virtual v0, Ljava/util/ArrayList;->clear()V
+     2  new-instance v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+     3  invoke-direct v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;-><init>()V
+     4  const/4 v1, 0
+     5  iput v1, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->index I
+     6  const-wide/16 v1, 30000
+     7  iput-wide v1, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+     8  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mConfigStageList Ljava/util/ArrayList;
+     9  invoke-virtual v1, v0, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
+    10  new-instance v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    11  invoke-direct v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;-><init>()V
+    12  const/4 v1, 1
+    13  iput v1, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->index I
+    14  const-wide/16 v1, 20000
+    15  iput-wide v1, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    16  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mConfigStageList Ljava/util/ArrayList;
+    17  invoke-virtual v1, v0, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
+    18  new-instance v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    19  invoke-direct v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;-><init>()V
+    20  const/4 v1, 3
+    21  iput v1, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->index I
+    22  const-wide/32 v2, 50000
+    23  iput-wide v2, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    24  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    25  move-result-object v2
+    26  sget-object v3, Ljava/lang/Boolean;->FALSE Ljava/lang/Boolean;
+    27  const-string v4, "goto_error_page"
+    28  invoke-virtual v2, v4, v3, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String; Ljava/lang/Object;)Ljava/lang/Object;
+    29  move-result-object v2
+    30  check-cast v2, Ljava/lang/Boolean;
+    31  invoke-virtual v2, Ljava/lang/Boolean;->booleanValue()Z
+    32  move-result v2
+    33  iput-boolean v2, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mGotoErrorPage Z
+    34  if-eqz v2, +00fh
+    35  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    36  move-result-object v2
+    37  invoke-virtual v2, v4, v3, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->set(Ljava/lang/String; Ljava/lang/Object;)V
+    38  iput v1, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+    39  const-wide/16 v1, 0
+    40  iput-wide v1, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    41  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mConfigStageList Ljava/util/ArrayList;
+    42  invoke-virtual v1, v0, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
+    43  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mConfigStageList Ljava/util/ArrayList;
+    44  return-object v0
 
---- getCurrentStageIndex  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- getCurrentStageIndex  (90 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  new-instance v1, Ljava/lang/StringBuilder;
+     3  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     4  const-string v2, "getCurrentStageIndex mCurrentIndex: "
+     5  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  iget v2, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     7  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+     8  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     9  move-result-object v1
+    10  const-string v2, "ApConfigStep"
+    11  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    12  iget v0, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+    13  const-string v1, "device_ap"
+    14  const/4 v2, 1
+    15  const/4 v3, 0
+    16  if-eqz v0, +05eh
+    17  const/4 v4, 3
+    18  if-eq v0, v2, +023h
+    19  const/4 v1, 2
+    20  if-eq v0, v1, +003h
+    21  return v0
+    22  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    23  move-result-object v0
+    24  invoke-virtual v0, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getSelectedSSID()Ljava/lang/String;
+    25  move-result-object v0
+    26  iget-object v2, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+    27  invoke-virtual v2, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+    28  move-result-object v2
+    29  if-eqz v2, +00eh
+    30  invoke-virtual v2, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    31  move-result-object v2
+    32  invoke-virtual v2, v0, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    33  move-result v0
+    34  if-nez v0, +003h
+    35  goto +2h
+    36  return v4
+    37  return v1
+    38  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    39  move-result-object v0
+    40  invoke-virtual v0, v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String;)Ljava/lang/Object;
+    41  move-result-object v0
+    42  check-cast v0, Landroid/net/wifi/ScanResult;
+    43  iget-object v0, v0, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+    44  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+    45  invoke-virtual v1, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+    46  move-result-object v1
+    47  if-eqz v1, +023h
+    48  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    49  move-result-object v1
+    50  invoke-static v0, v1, Lcom/miot/service/connection/wifi/ConnectionUtils;->isEqualWifi(Ljava/lang/String; Ljava/lang/String;)Z
+    51  move-result v0
+    52  if-nez v0, +003h
+    53  goto +17h
+    54  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    55  move-result-object v0
+    56  const-string v1, "send_passwd_success"
+    57  sget-object v3, Ljava/lang/Boolean;->FALSE Ljava/lang/Boolean;
+    58  invoke-virtual v0, v1, v3, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String; Ljava/lang/Object;)Ljava/lang/Object;
+    59  move-result-object v0
+    60  check-cast v0, Ljava/lang/Boolean;
+    61  invoke-virtual v0, Ljava/lang/Boolean;->booleanValue()Z
+    62  move-result v0
+    63  if-eqz v0, +003h
+    64  return v4
+    65  return v2
+    66  iput v3, v5, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+    67  return v3
+    68  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    69  move-result-object v0
+    70  invoke-virtual v0, v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String;)Ljava/lang/Object;
+    71  move-result-object v0
+    72  check-cast v0, Landroid/net/wifi/ScanResult;
+    73  if-nez v0, +007h
+    74  invoke-virtual v5, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->finishSmartConfig(Z)V
+    75  const/4 v0, -1
+    76  return v0
+    77  iget-object v0, v0, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+    78  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+    79  invoke-virtual v1, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+    80  move-result-object v1
+    81  if-eqz v1, +00eh
+    82  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    83  move-result-object v1
+    84  invoke-static v0, v1, Lcom/miot/service/connection/wifi/ConnectionUtils;->isEqualWifi(Ljava/lang/String; Ljava/lang/String;)Z
+    85  move-result v0
+    86  if-nez v0, +003h
+    87  goto +2h
+    88  return v2
+    89  return v3
 
---- getGatewayAddr  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- getGatewayAddr  (15 instr)
+     0  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+     1  if-nez v0, +005h
+     2  const-string v0, ""
+     3  return-object v0
+     4  const-string v1, "wifi"
+     5  invoke-virtual v0, v1, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+     6  move-result-object v0
+     7  check-cast v0, Landroid/net/wifi/WifiManager;
+     8  invoke-virtual v0, Landroid/net/wifi/WifiManager;->getDhcpInfo()Landroid/net/DhcpInfo;
+     9  move-result-object v0
+    10  iget v0, v0, Landroid/net/DhcpInfo;->gateway I
+    11  int-to-long v0, v0
+    12  invoke-virtual v2, v0, v1, Lcom/miot/service/connection/wifi/step/ApConfigStep;->long2Ip(J)Ljava/lang/String;
+    13  move-result-object v0
+    14  return-object v0
 
---- getStep  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- getStep  (2 instr)
+     0  sget-object v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_AP_CONFIG_STEP Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+     1  return-object v0
 
---- handleMessage  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- handleMessage  (159 instr)
+     0  iget v0, v10, Landroid/os/Message;->what I
+     1  const/16 v1, 101
+     2  const/16 v2, 112
+     3  const/4 v3, 1
+     4  const-string v4, "ApConfigStep"
+     5  if-eq v0, v1, +067h
+     6  const/16 v1, 114
+     7  if-eq v0, v2, +023h
+     8  const/16 v2, 123
+     9  if-eq v0, v2, +01ah
+    10  if-eq v0, v1, +013h
+    11  const/16 v1, 115
+    12  if-eq v0, v1, +007h
+    13  invoke-super v9, v10, Lcom/miot/service/connection/wifi/step/ConfigStep;->handleMessage(Landroid/os/Message;)V
+    14  goto/16 +129h
+    15  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->onStopConnection()V
+    16  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->stopConnection()V
+    17  goto/16 +121h
+    18  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startConnectionAsso()V
+    19  goto/16 +11ch
+    20  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startConnectToDeviceAp()V
+    21  goto/16 +117h
+    22  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+    23  move-result-object v10
+    24  new-instance v0, Ljava/lang/StringBuilder;
+    25  invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    26  const-string v5, "handleMessage, msg.what = MSG_UPDATE_DEVICE_STATE, mCurrentIndex = "
+    27  invoke-virtual v0, v5, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    28  iget v5, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+    29  invoke-virtual v0, v5, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    30  invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    31  move-result-object v0
+    32  invoke-virtual v10, v4, v0, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    33  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    34  move-result-object v10
+    35  if-eqz v10, +010h
+    36  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    37  move-result-object v10
+    38  invoke-virtual v10, v2, Landroid/os/Handler;->removeMessages(I)V
+    39  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    40  move-result-object v10
+    41  invoke-virtual v10, v1, Landroid/os/Handler;->removeMessages(I)V
+    42  iget v10, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+    43  if-ne v10, v3, +0e5h
+    44  invoke-virtual v9, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->onCurrentIndexSuccess(I)V
+    45  const/4 v10, 3
+    46  iput v10, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+    47  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->onStopConnection()V
+    48  invoke-virtual v9, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->onDeviceConnSuccess(Z)V
+    49  goto/16 +0d7h
+    50  iget-object v10, v10, Landroid/os/Message;->obj Ljava/lang/Object;
+    51  check-cast v10, Landroid/net/NetworkInfo;
+    52  invoke-virtual v10, Landroid/net/NetworkInfo;->getDetailedState()Landroid/net/NetworkInfo$DetailedState;
+    53  move-result-object v0
+    54  iget-object v1, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+    55  invoke-virtual v1, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+    56  move-result-object v1
+    57  if-eqz v1, +0c8h
+    58  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    59  move-result-object v5
+    60  invoke-static v5, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    61  move-result v5
+    62  if-nez v5, +0beh
+    63  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    64  move-result-object v5
+    65  const-string v6, "<unknown ssid>"
+    66  invoke-virtual v5, v6, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    67  move-result v5
+    68  if-eqz v5, +004h
+    69  goto/16 +0b0h
+    70  sget-object v5, Landroid/net/NetworkInfo$DetailedState;->CONNECTED Landroid/net/NetworkInfo$DetailedState;
+    71  if-ne v0, v5, +0a2h
+    72  invoke-virtual v10, Landroid/net/NetworkInfo;->isConnected()Z
+    73  move-result v5
+    74  if-eqz v5, +09ch
+    75  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+    76  move-result-object v5
+    77  new-instance v6, Ljava/lang/StringBuilder;
+    78  invoke-direct v6, Ljava/lang/StringBuilder;-><init>()V
+    79  const-string v7, "WifiStateConfig"
+    80  invoke-virtual v6, v7, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    81  invoke-virtual v0, Ljava/lang/Object;->toString()Ljava/lang/String;
+    82  move-result-object v0
+    83  invoke-virtual v6, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    84  const-string v0, ", "
+    85  invoke-virtual v6, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    86  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    87  move-result-object v7
+    88  const-string v8, ""
+    89  if-eqz v7, +007h
+    90  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    91  move-result-object v7
+    92  goto +2h
+    93  move-object v7, v8
+    94  invoke-virtual v6, v7, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    95  invoke-virtual v6, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    96  invoke-virtual v10, Landroid/net/NetworkInfo;->getExtraInfo()Ljava/lang/String;
+    97  move-result-object v7
+    98  if-eqz v7, +007h
+    99  invoke-virtual v10, Landroid/net/NetworkInfo;->getExtraInfo()Ljava/lang/String;
+   100  move-result-object v7
+   101  goto +2h
+   102  move-object v7, v8
+   103  invoke-virtual v6, v7, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+   104  invoke-virtual v6, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+   105  invoke-virtual v10, Landroid/net/NetworkInfo;->getReason()Ljava/lang/String;
+   106  move-result-object v0
+   107  if-eqz v0, +006h
+   108  invoke-virtual v10, Landroid/net/NetworkInfo;->getReason()Ljava/lang/String;
+   109  move-result-object v8
+   110  invoke-virtual v6, v8, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+   111  invoke-virtual v6, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+   112  move-result-object v10
+   113  invoke-virtual v5, v4, v10, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+   114  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+   115  move-result-object v10
+   116  const-string v0, "device_ap"
+   117  invoke-virtual v10, v0, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String;)Ljava/lang/Object;
+   118  move-result-object v10
+   119  check-cast v10, Landroid/net/wifi/ScanResult;
+   120  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+   121  move-result-object v0
+   122  iget-object v4, v10, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+   123  invoke-static v0, v4, Lcom/miot/service/connection/wifi/ConnectionUtils;->isEqualWifi(Ljava/lang/String; Ljava/lang/String;)Z
+   124  move-result v0
+   125  if-eqz v0, +00eh
+   126  iget v0, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+   127  if-nez v0, +00ah
+   128  iget-boolean v0, v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mIsPaused Z
+   129  if-nez v0, +006h
+   130  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->onApConnected()V
+   131  return-void 
+   132  invoke-virtual v1, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+   133  move-result-object v0
+   134  iget-object v10, v10, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+   135  invoke-static v0, v10, Lcom/miot/service/connection/wifi/ConnectionUtils;->isEqualWifi(Ljava/lang/String; Ljava/lang/String;)Z
+   136  move-result v10
+   137  if-nez v10, +021h
+   138  iget v10, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+   139  if-ne v10, v3, +01dh
+   140  iget-boolean v10, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mHasSendWificonfig Z
+   141  if-eqz v10, +019h
+   142  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+   143  move-result-object v10
+   144  if-eqz v10, +013h
+   145  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+   146  move-result-object v10
+   147  invoke-virtual v10, v2, Landroid/os/Handler;->sendEmptyMessage(I)Z
+   148  goto +ah
+   149  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+   150  move-result-object v10
+   151  const-string v0, "wifi is not connected!"
+   152  invoke-virtual v10, v4, v0, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+   153  return-void 
+   154  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+   155  move-result-object v10
+   156  const-string v0, "wifi info is not right!"
+   157  invoke-virtual v10, v4, v0, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+   158  return-void 
 
---- long2Ip  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- long2Ip  (36 instr)
+     0  new-instance v0, Ljava/lang/StringBuffer;
+     1  invoke-direct v0, Ljava/lang/StringBuffer;-><init>()V
+     2  const-wide/16 v1, 255
+     3  and-long v3, v7, v1
+     4  long-to-int v4, v3
+     5  invoke-static v4, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+     6  move-result-object v3
+     7  invoke-virtual v0, v3, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+     8  const/16 v3, 46
+     9  invoke-virtual v0, v3, Ljava/lang/StringBuffer;->append(C)Ljava/lang/StringBuffer;
+    10  const/16 v4, 8
+    11  shr-long v4, v7, v4
+    12  and-long/2addr v4, v1
+    13  long-to-int v5, v4
+    14  invoke-static v5, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+    15  move-result-object v4
+    16  invoke-virtual v0, v4, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+    17  invoke-virtual v0, v3, Ljava/lang/StringBuffer;->append(C)Ljava/lang/StringBuffer;
+    18  const/16 v4, 16
+    19  shr-long v4, v7, v4
+    20  and-long/2addr v4, v1
+    21  long-to-int v5, v4
+    22  invoke-static v5, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+    23  move-result-object v4
+    24  invoke-virtual v0, v4, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+    25  invoke-virtual v0, v3, Ljava/lang/StringBuffer;->append(C)Ljava/lang/StringBuffer;
+    26  const/16 v3, 24
+    27  shr-long/2addr v7, v3
+    28  and-long/2addr v7, v1
+    29  long-to-int v8, v7
+    30  invoke-static v8, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+    31  move-result-object v7
+    32  invoke-virtual v0, v7, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+    33  invoke-virtual v0, Ljava/lang/StringBuffer;->toString()Ljava/lang/String;
+    34  move-result-object v7
+    35  return-object v7
 
---- onApConnected  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onApConnected  (15 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  const-string v1, "ApConfigStep"
+     3  const-string v2, "handle message network changed, decide connect ap success"
+     4  invoke-virtual v0, v1, v2, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+     5  invoke-virtual v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     6  move-result-object v0
+     7  if-eqz v0, +010h
+     8  invoke-virtual v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     9  move-result-object v0
+    10  new-instance v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;
+    11  invoke-direct v1, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep$2;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    12  const-wide/16 v2, 2000
+    13  invoke-virtual v0, v1, v2, v3, Landroid/os/Handler;->postDelayed(Ljava/lang/Runnable; J)Z
+    14  return-void 
 
---- onBackPressed  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onBackPressed  (42 instr)
+     0  new-instance v0, Lcom/miot/service/view/MLAlertDialog$Builder;
+     1  iget-object v1, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+     2  invoke-direct v0, v1, Lcom/miot/service/view/MLAlertDialog$Builder;-><init>(Landroid/content/Context;)V
+     3  iget-object v1, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+     4  sget v2, Lcom/miot/service/R$string;->stop_connect_device_title I
+     5  invoke-virtual v1, v2, Landroid/content/Context;->getString(I)Ljava/lang/String;
+     6  move-result-object v1
+     7  invoke-virtual v0, v1, Lcom/miot/service/view/MLAlertDialog$Builder;->setTitle(Ljava/lang/CharSequence;)Lcom/miot/service/view/MLAlertDialog$Builder;
+     8  move-result-object v0
+     9  iget-object v1, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    10  sget v2, Lcom/miot/service/R$string;->stop_connect_device_message I
+    11  invoke-virtual v1, v2, Landroid/content/Context;->getString(I)Ljava/lang/String;
+    12  move-result-object v1
+    13  invoke-virtual v0, v1, Lcom/miot/service/view/MLAlertDialog$Builder;->setMessage(Ljava/lang/CharSequence;)Lcom/miot/service/view/MLAlertDialog$Builder;
+    14  move-result-object v0
+    15  iget-object v1, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    16  sget v2, Lcom/miot/service/R$string;->confirm I
+    17  invoke-virtual v1, v2, Landroid/content/Context;->getString(I)Ljava/lang/String;
+    18  move-result-object v1
+    19  new-instance v2, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;
+    20  invoke-direct v2, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$9;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    21  invoke-virtual v0, v1, v2, Lcom/miot/service/view/MLAlertDialog$Builder;->setPositiveButton(Ljava/lang/CharSequence; Landroid/content/DialogInterface$OnClickListener;)Lcom/miot/service/view/MLAlertDialog$Builder;
+    22  move-result-object v0
+    23  iget-object v1, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    24  sget v2, Lcom/miot/service/R$string;->cancel I
+    25  invoke-virtual v1, v2, Landroid/content/Context;->getString(I)Ljava/lang/String;
+    26  move-result-object v1
+    27  const/4 v2, 0
+    28  invoke-virtual v0, v1, v2, Lcom/miot/service/view/MLAlertDialog$Builder;->setNegativeButton(Ljava/lang/CharSequence; Landroid/content/DialogInterface$OnClickListener;)Lcom/miot/service/view/MLAlertDialog$Builder;
+    29  move-result-object v0
+    30  iget-object v1, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    31  invoke-virtual v1, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+    32  move-result-object v1
+    33  sget v2, Lcom/miot/service/R$color;->std_dialog_button_red I
+    34  invoke-virtual v1, v2, Landroid/content/res/Resources;->getColor(I)I
+    35  move-result v1
+    36  const/4 v2, -1
+    37  invoke-virtual v0, v1, v2, Lcom/miot/service/view/MLAlertDialog$Builder;->setBtnTextColor(I I)Lcom/miot/service/view/MLAlertDialog$Builder;
+    38  move-result-object v0
+    39  invoke-virtual v0, Lcom/miot/service/view/MLAlertDialog$Builder;->show()Lcom/miot/service/view/MLAlertDialog;
+    40  const/4 v0, 1
+    41  return v0
 
---- onDeviceConnSuccess  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onDeviceConnSuccess  (2 instr)
+     0  invoke-virtual v0, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startSearchNewDevice()Z
+     1  return-void 
 
---- onFinishStep  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onFinishStep  (18 instr)
+     0  invoke-super v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->onFinishStep()V
+     1  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     2  move-result-object v0
+     3  new-instance v1, Ljava/lang/StringBuilder;
+     4  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     5  const-string v2, "onFinishStep, mCurrentIndex: "
+     6  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  iget v2, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     8  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+     9  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    10  move-result-object v1
+    11  const-string v2, "ApConfigStep"
+    12  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    13  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    14  invoke-virtual v0, Lcom/miot/service/connection/wifi/DeviceFinder;->stopScanNewDevice()V
+    15  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    16  invoke-virtual v0, Lcom/miot/service/connection/wifi/DeviceFinder;->cleanCallback()V
+    17  return-void 
 
---- onStageTimeOut  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onStageTimeOut  (58 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  new-instance v1, Ljava/lang/StringBuilder;
+     3  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     4  const-string v2, "onStageTimeOut index: "
+     5  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  invoke-virtual v1, v4, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+     7  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     8  move-result-object v1
+     9  const-string v2, "ApConfigStep"
+    10  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    11  const/4 v0, 0
+    12  if-eqz v4, +028h
+    13  const/4 v1, 1
+    14  if-eq v4, v1, +01bh
+    15  const/4 v2, 2
+    16  if-eq v4, v2, +015h
+    17  const/4 v2, 3
+    18  if-eq v4, v2, +003h
+    19  return-object v0
+    20  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    21  invoke-virtual v4, Lcom/miot/service/connection/wifi/DeviceFinder;->stopScanNewDevice()V
+    22  iget v4, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mFindDeviceTime I
+    23  if-ne v4, v1, +005h
+    24  sget-object v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_FIND_DEVICE_FAILED Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    25  return-object v4
+    26  sget-object v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_FIND_DEVICE_FAILED Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    27  return-object v4
+    28  sget-object v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_CONNECT_SELECTED_AP_FAILED Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    29  return-object v4
+    30  iget v4, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mSendPasswdTime I
+    31  if-ne v4, v1, +005h
+    32  sget-object v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_SEND_ROUTER_INFO_ERROR Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    33  return-object v4
+    34  sget-object v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_SEND_ROUTER_INFO_ERROR Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    35  return-object v4
+    36  sget v4, Landroid/os/Build$VERSION;->SDK_INT I
+    37  const/16 v1, 29
+    38  if-lt v4, v1, +01dh
+    39  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    40  invoke-static v4, Lcom/miot/service/connection/wifi/ConnectionUtils;->isTargetSDKVersionAfter29(Landroid/content/Context;)Z
+    41  move-result v4
+    42  if-eqz v4, +015h
+    43  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    44  if-eqz v4, +011h
+    45  iget-object v4, v4, Lcom/miot/service/connection/wifi/QConnectCallback;->callback Landroid/net/ConnectivityManager$NetworkCallback;
+    46  if-eqz v4, +00dh
+    47  iget-object v1, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    48  invoke-static v1, v4, Lcom/miot/service/connection/wifi/j;->a(Landroid/net/ConnectivityManager; Landroid/net/ConnectivityManager$NetworkCallback;)V
+    49  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    50  iput-object v0, v4, Lcom/miot/service/connection/wifi/QConnectCallback;->callback Landroid/net/ConnectivityManager$NetworkCallback;
+    51  iput-object v0, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    52  invoke-virtual v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    53  move-result-object v4
+    54  const/16 v0, 123
+    55  invoke-virtual v4, v0, Landroid/os/Handler;->removeMessages(I)V
+    56  sget-object v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_CONNECT_AP_ERROR Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    57  return-object v4
 
---- onStopConnection  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- onStopConnection  (66 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  new-instance v1, Ljava/lang/StringBuilder;
+     3  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     4  const-string v2, "onStopConnection, mCurrentIndex: "
+     5  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  iget v2, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     7  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+     8  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     9  move-result-object v1
+    10  const-string v2, "ApConfigStep"
+    11  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    12  invoke-virtual v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    13  move-result-object v0
+    14  const/16 v1, 112
+    15  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+    16  invoke-virtual v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    17  move-result-object v0
+    18  const/16 v1, 114
+    19  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+    20  sget v0, Landroid/os/Build$VERSION;->SDK_INT I
+    21  const/16 v1, 23
+    22  const/4 v2, 0
+    23  if-lt v0, v1, +007h
+    24  iget-object v1, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    25  invoke-static v1, v2, Lcom/miot/service/connection/wifi/k;->a(Landroid/net/ConnectivityManager; Landroid/net/Network;)Z
+    26  iget-object v1, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+    27  invoke-virtual v1, Lcom/miot/service/connection/wifi/DeviceFinder;->isFindingNew()Z
+    28  move-result v1
+    29  if-nez v1, +046h
+    30  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    31  move-result-object v1
+    32  invoke-virtual v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getSelectedSSID()Ljava/lang/String;
+    33  move-result-object v6
+    34  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    35  move-result-object v1
+    36  invoke-virtual v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getSelectedApPasswd()Ljava/lang/String;
+    37  move-result-object v7
+    38  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    39  move-result-object v1
+    40  invoke-virtual v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getSelectedAPCapabilities()Ljava/lang/String;
+    41  move-result-object v9
+    42  const/16 v1, 29
+    43  if-lt v0, v1, +01dh
+    44  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    45  invoke-static v0, Lcom/miot/service/connection/wifi/ConnectionUtils;->isTargetSDKVersionAfter29(Landroid/content/Context;)Z
+    46  move-result v0
+    47  if-eqz v0, +015h
+    48  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    49  if-eqz v0, +011h
+    50  iget-object v0, v0, Lcom/miot/service/connection/wifi/QConnectCallback;->callback Landroid/net/ConnectivityManager$NetworkCallback;
+    51  if-eqz v0, +00dh
+    52  iget-object v1, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    53  invoke-static v1, v0, Lcom/miot/service/connection/wifi/j;->a(Landroid/net/ConnectivityManager; Landroid/net/ConnectivityManager$NetworkCallback;)V
+    54  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    55  iput-object v2, v0, Lcom/miot/service/connection/wifi/QConnectCallback;->callback Landroid/net/ConnectivityManager$NetworkCallback;
+    56  iput-object v2, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    57  iget-object v3, v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    58  iget-object v4, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    59  iget-object v5, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+    60  const/4 v8, 0
+    61  const/4 v10, 0
+    62  const/4 v11, 0
+    63  const/4 v12, 1
+    64  invoke-static/range v3 ... v12, Lcom/miot/service/connection/wifi/ConnectionUtils;->connectToAP(Landroid/content/Context; Landroid/net/ConnectivityManager; Landroid/net/wifi/WifiManager; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String; Lcom/miot/service/connection/wifi/QConnectCallback; Z Z)V
+    65  return-void 
 
---- parseRpcResponse  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- parseRpcResponse  (29 instr)
+     0  const-string v0, "result"
+     1  const/4 v1, 0
+     2  new-instance v2, Lorg/json/JSONObject;
+     3  invoke-direct v2, v5, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
+     4  const-string v5, "code"
+     5  invoke-virtual v2, v5, Lorg/json/JSONObject;->optInt(Ljava/lang/String;)I
+     6  move-result v5
+     7  invoke-static v5, Lcom/miot/service/connection/wifi/ErrorCode;->valueof(I)Lcom/miot/service/connection/wifi/ErrorCode;
+     8  move-result-object v5
+     9  sget-object v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$10;->$SwitchMap$com$miot$service$connection$wifi$ErrorCode [I
+    10  invoke-virtual v5, Ljava/lang/Enum;->ordinal()I
+    11  move-result v5
+    12  aget v5, v3, v5
+    13  const/4 v3, 1
+    14  if-eq v5, v3, +003h
+    15  return-object v1
+    16  invoke-virtual v2, v0, Lorg/json/JSONObject;->optJSONObject(Ljava/lang/String;)Lorg/json/JSONObject;
+    17  move-result-object v5
+    18  if-nez v5, +010h
+    19  invoke-virtual v2, v0, Lorg/json/JSONObject;->optJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
+    20  move-result-object v3
+    21  if-eqz v3, +00ah
+    22  new-instance v5, Lorg/json/JSONObject;
+    23  invoke-direct v5, Lorg/json/JSONObject;-><init>()V
+    24  invoke-virtual v5, v0, v3, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    25  if-nez v5, +003h
+    26  return-object v2
+    27  return-object v5
+    28  return-object v1
 
---- setMainTitle  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- setMainTitle  (14 instr)
+     0  iget v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     1  if-eqz v0, +00fh
+     2  const/4 v1, 1
+     3  if-eq v0, v1, +00ch
+     4  const/4 v1, 2
+     5  if-eq v0, v1, +006h
+     6  const/4 v1, 3
+     7  if-eq v0, v1, +003h
+     8  goto +9h
+     9  sget v0, Lcom/miot/service/R$string;->smart_config_update_connection_state I
+    10  goto +3h
+    11  sget v0, Lcom/miot/service/R$string;->smart_config_device_connecting I
+    12  invoke-virtual v3, v0, Landroid/widget/TextView;->setText(I)V
+    13  return-void 
 
---- setMiioRouter  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- setMiioRouter  (101 instr)
+     0  const-string v9, "gmt_offset"
+     1  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     2  move-result-object v0
+     3  new-instance v1, Ljava/lang/StringBuilder;
+     4  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     5  const-string v2, "setMiioRouter, ssid = "
+     6  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  invoke-virtual v1, v7, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     8  const-string v2, ", pw = "
+     9  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    10  invoke-virtual v1, v8, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    11  const-string v2, ", BEGIN!"
+    12  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    13  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    14  move-result-object v1
+    15  const-string v2, "ApConfigStep"
+    16  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    17  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    18  move-result-object v0
+    19  const-string v1, "people"
+    20  invoke-virtual v0, v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String;)Ljava/lang/Object;
+    21  move-result-object v0
+    22  check-cast v0, Lcom/miot/common/people/People;
+    23  invoke-static Lcom/miot/service/common/manager/ServiceManager;->getInstance()Lcom/miot/service/common/manager/ServiceManager;
+    24  move-result-object v1
+    25  invoke-virtual v1, Lcom/miot/service/common/manager/ServiceManager;->getAppConfig()Lcom/miot/common/config/AppConfiguration;
+    26  move-result-object v1
+    27  invoke-virtual v1, Lcom/miot/common/config/AppConfiguration;->getLocale()Lcom/miot/common/config/AppConfiguration$Locale;
+    28  move-result-object v1
+    29  if-nez v0, +007h
+    30  const/4 v7, 1
+    31  invoke-virtual v6, v7, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->finishSmartConfig(Z)V
+    32  return-void 
+    33  new-instance v3, Lorg/json/JSONObject;
+    34  invoke-direct v3, Lorg/json/JSONObject;-><init>()V
+    35  const-string v4, "id"
+    36  iget v5, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mId I
+    37  invoke-virtual v3, v4, v5, Lorg/json/JSONObject;->put(Ljava/lang/String; I)Lorg/json/JSONObject;
+    38  const-string v4, "method"
+    39  const-string v5, "miIO.config_router"
+    40  invoke-virtual v3, v4, v5, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    41  new-instance v4, Lorg/json/JSONObject;
+    42  invoke-direct v4, Lorg/json/JSONObject;-><init>()V
+    43  const-string v5, "ssid"
+    44  invoke-virtual v4, v5, v7, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    45  const-string v7, "passwd"
+    46  if-nez v8, +004h
+    47  const-string v8, ""
+    48  invoke-virtual v4, v7, v8, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    49  const-string v7, "uid"
+    50  invoke-virtual v0, Lcom/miot/common/people/People;->getUserId()Ljava/lang/String;
+    51  move-result-object v8
+    52  invoke-static v8, Ljava/lang/Long;->valueOf(Ljava/lang/String;)Ljava/lang/Long;
+    53  move-result-object v8
+    54  invoke-virtual v4, v7, v8, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    55  const-string v7, "bind_key"
+    56  iget-object v8, v6, Lcom/miot/service/connection/wifi/step/ConfigStep;->mBindkey Ljava/lang/String;
+    57  invoke-virtual v4, v7, v8, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    58  if-eqz v1, +00fh
+    59  sget-object v7, Lcom/miot/common/config/AppConfiguration$Locale;->cn Lcom/miot/common/config/AppConfiguration$Locale;
+    60  if-eq v1, v7, +00bh
+    61  const-string v7, "country_domain"
+    62  invoke-virtual v1, Ljava/lang/Object;->toString()Ljava/lang/String;
+    63  move-result-object v8
+    64  invoke-virtual v4, v7, v8, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    65  new-instance v7, Ljava/util/GregorianCalendar;
+    66  invoke-direct v7, Ljava/util/GregorianCalendar;-><init>()V
+    67  invoke-virtual v7, Ljava/util/Calendar;->getTimeZone()Ljava/util/TimeZone;
+    68  move-result-object v7
+    69  const-string v8, "tz"
+    70  invoke-virtual v7, Ljava/util/TimeZone;->getID()Ljava/lang/String;
+    71  move-result-object v7
+    72  invoke-virtual v4, v8, v7, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    73  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    74  move-result-object v7
+    75  const/16 v8, 480
+    76  invoke-static v8, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+    77  move-result-object v8
+    78  invoke-virtual v7, v9, v8, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String; Ljava/lang/Object;)Ljava/lang/Object;
+    79  move-result-object v7
+    80  check-cast v7, Ljava/lang/Integer;
+    81  invoke-virtual v4, v9, v7, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    82  const-string v7, "params"
+    83  invoke-virtual v3, v7, v4, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    84  goto +2h
+    85  nop 
+    86  invoke-virtual v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->getGatewayAddr()Ljava/lang/String;
+    87  move-result-object v7
+    88  invoke-static v7, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    89  move-result v8
+    90  if-eqz v8, +003h
+    91  return-void 
+    92  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+    93  move-result-object v8
+    94  const-string v9, "async_get_token start"
+    95  invoke-virtual v8, v2, v9, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    96  new-instance v8, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+    97  invoke-direct v8, v6, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep$7;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep; Lorg/json/JSONObject;)V
+    98  const/16 v9, 9
+    99  invoke-static v7, v8, v9, Lcom/xiaomi/miio/MiioLocalAPI;->async_get_token(Ljava/lang/String; Lcom/xiaomi/miio/MiioLocalRpcResponse; I)V
+   100  return-void 
 
---- setSubMainTitle  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- setSubMainTitle  (14 instr)
+     0  iget v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     1  if-eqz v0, +00fh
+     2  const/4 v1, 1
+     3  if-eq v0, v1, +009h
+     4  const/4 v1, 2
+     5  if-eq v0, v1, +006h
+     6  const/4 v1, 3
+     7  if-eq v0, v1, +003h
+     8  goto +9h
+     9  sget v0, Lcom/miot/service/R$string;->smart_config_connecting_sub_title I
+    10  goto +3h
+    11  sget v0, Lcom/miot/service/R$string;->smart_config_ap_connect_sub_title I
+    12  invoke-virtual v3, v0, Landroid/widget/TextView;->setText(I)V
+    13  return-void 
 
---- startConnectToDeviceAp  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- startConnectToDeviceAp  (70 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  const-string v1, "ApConfigStep"
+     3  const-string v2, "startConnectToDeviceAp"
+     4  invoke-virtual v0, v1, v2, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+     5  const-string v7, ""
+     6  const/4 v0, 0
+     7  iput v0, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     8  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+     9  invoke-virtual v0, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+    10  move-result-object v0
+    11  invoke-virtual v0, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    12  move-result-object v1
+    13  invoke-static v1, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    14  move-result v1
+    15  if-nez v1, +02bh
+    16  invoke-virtual v0, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    17  move-result-object v1
+    18  iget-object v2, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mScanResult Landroid/net/wifi/ScanResult;
+    19  iget-object v2, v2, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+    20  invoke-static v1, v2, Lcom/miot/service/connection/wifi/ConnectionUtils;->isEqualWifi(Ljava/lang/String; Ljava/lang/String;)Z
+    21  move-result v1
+    22  if-eqz v1, +01dh
+    23  invoke-virtual v0, Landroid/net/wifi/WifiInfo;->getSupplicantState()Landroid/net/wifi/SupplicantState;
+    24  move-result-object v0
+    25  sget-object v1, Landroid/net/wifi/SupplicantState;->COMPLETED Landroid/net/wifi/SupplicantState;
+    26  if-ne v0, v1, +015h
+    27  invoke-virtual v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    28  move-result-object v0
+    29  if-eqz v0, +03dh
+    30  invoke-virtual v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    31  move-result-object v0
+    32  new-instance v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;
+    33  invoke-direct v1, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep$4;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    34  invoke-virtual v0, v1, Landroid/os/Handler;->post(Ljava/lang/Runnable;)Z
+    35  goto +2fh
+    36  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    37  if-eqz v0, +007h
+    38  iget-object v0, v0, Lcom/miot/service/connection/wifi/QConnectCallback;->callback Landroid/net/ConnectivityManager$NetworkCallback;
+    39  if-eqz v0, +003h
+    40  return-void 
+    41  new-instance v10, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;
+    42  invoke-direct v10, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep$5;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    43  iput-object v10, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    44  iget-object v3, v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+    45  iget-object v4, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    46  iget-object v5, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+    47  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mScanResult Landroid/net/wifi/ScanResult;
+    48  iget-object v6, v0, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+    49  iget-object v8, v0, Landroid/net/wifi/ScanResult;->BSSID Ljava/lang/String;
+    50  iget-object v9, v0, Landroid/net/wifi/ScanResult;->capabilities Ljava/lang/String;
+    51  const/4 v11, 1
+    52  const/4 v12, 0
+    53  invoke-static/range v3 ... v12, Lcom/miot/service/connection/wifi/ConnectionUtils;->connectToAP(Landroid/content/Context; Landroid/net/ConnectivityManager; Landroid/net/wifi/WifiManager; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String; Lcom/miot/service/connection/wifi/QConnectCallback; Z Z)V
+    54  invoke-virtual v13, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    55  move-result-object v0
+    56  const/16 v1, 123
+    57  const-wide/16 v2, 15000
+    58  invoke-virtual v0, v1, v2, v3, Landroid/os/Handler;->sendEmptyMessageDelayed(I J)Z
+    59  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mNextButton Landroid/widget/Button;
+    60  const/16 v1, 8
+    61  invoke-virtual v0, v1, Landroid/view/View;->setVisibility(I)V
+    62  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mNextButton Landroid/widget/Button;
+    63  sget v1, Lcom/miot/service/R$string;->cancel I
+    64  invoke-virtual v0, v1, Landroid/widget/TextView;->setText(I)V
+    65  iget-object v0, v13, Lcom/miot/service/connection/wifi/step/ConfigStep;->mNextButton Landroid/widget/Button;
+    66  new-instance v1, Lcom/miot/service/connection/wifi/step/ApConfigStep$6;
+    67  invoke-direct v1, v13, Lcom/miot/service/connection/wifi/step/ApConfigStep$6;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    68  invoke-virtual v0, v1, Landroid/view/View;->setOnClickListener(Landroid/view/View$OnClickListener;)V
+    69  return-void 
 
---- startConnection  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- startConnection  (31 instr)
+     0  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+     1  move-result-object v0
+     2  const-string v1, "device_ap"
+     3  invoke-virtual v0, v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String;)Ljava/lang/Object;
+     4  move-result-object v0
+     5  check-cast v0, Landroid/net/wifi/ScanResult;
+     6  iput-object v0, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mScanResult Landroid/net/wifi/ScanResult;
+     7  invoke-static Ljava/lang/System;->currentTimeMillis()J
+     8  move-result-wide v0
+     9  iput-wide v0, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigStartTime J
+    10  if-eqz v3, +021h
+    11  const/4 v0, 1
+    12  if-eq v3, v0, +015h
+    13  const/4 v0, 2
+    14  if-eq v3, v0, +00eh
+    15  const/4 v0, 3
+    16  if-eq v3, v0, +003h
+    17  goto +19h
+    18  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->onStopConnection()V
+    19  const/4 v3, 0
+    20  invoke-virtual v2, v3, Lcom/miot/service/connection/wifi/step/ApConfigStep;->onDeviceConnSuccess(Z)V
+    21  goto +11h
+    22  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->onStopConnection()V
+    23  goto +dh
+    24  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->startConnectionAsso()V
+    25  iget v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mSendPasswdTime I
+    26  add-int/2addr v3, v0
+    27  iput v3, v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mSendPasswdTime I
+    28  goto +4h
+    29  invoke-direct v2, Lcom/miot/service/connection/wifi/step/ApConfigStep;->getBindkey()V
+    30  return-void 
 
---- startConnectionAsso  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- startConnectionAsso  (53 instr)
+     0  invoke-static Ljava/lang/System;->currentTimeMillis()J
+     1  move-result-wide v0
+     2  const-wide/16 v2, 1000
+     3  div-long/2addr v0, v2
+     4  long-to-int v1, v0
+     5  iput v1, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mId I
+     6  const/4 v0, 1
+     7  iput v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+     8  sget v1, Landroid/os/Build$VERSION;->SDK_INT I
+     9  const/16 v2, 23
+    10  const/4 v3, 0
+    11  const/4 v4, 0
+    12  if-lt v1, v2, +028h
+    13  iget-object v1, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    14  invoke-static v1, Lcom/miot/service/connection/wifi/step/a;->a(Landroid/net/ConnectivityManager;)[Landroid/net/Network;
+    15  move-result-object v1
+    16  const/4 v2, 0
+    17  array-length v5, v1
+    18  if-ge v2, v5, +018h
+    19  iget-object v5, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    20  aget-object v6, v1, v2
+    21  invoke-static v5, v6, Lcom/miot/service/connection/wifi/step/b;->a(Landroid/net/ConnectivityManager; Landroid/net/Network;)Landroid/net/NetworkInfo;
+    22  move-result-object v5
+    23  if-eqz v5, +00bh
+    24  invoke-virtual v5, Landroid/net/NetworkInfo;->getType()I
+    25  move-result v5
+    26  if-ne v5, v0, +005h
+    27  aget-object v1, v1, v2
+    28  goto +5h
+    29  add-int/lit8 v2, v2, 1
+    30  goto -18h
+    31  move-object v1, v4
+    32  iget-object v2, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    33  invoke-static v2, v1, Lcom/miot/service/connection/wifi/k;->a(Landroid/net/ConnectivityManager; Landroid/net/Network;)Z
+    34  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    35  move-result-object v1
+    36  invoke-virtual v1, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getSelectedSSID()Ljava/lang/String;
+    37  move-result-object v1
+    38  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    39  move-result-object v2
+    40  invoke-virtual v2, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getSelectedApPasswd()Ljava/lang/String;
+    41  move-result-object v2
+    42  invoke-static Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->getInstance()Lcom/miot/service/connection/wifi/SmartConfigDataProvider;
+    43  move-result-object v5
+    44  const-string v6, "miui_class"
+    45  invoke-virtual v5, v6, v4, Lcom/miot/service/connection/wifi/SmartConfigDataProvider;->get(Ljava/lang/String; Ljava/lang/Object;)Ljava/lang/Object;
+    46  move-result-object v4
+    47  check-cast v4, Ljava/lang/Class;
+    48  invoke-virtual v7, v1, v2, v4, Lcom/miot/service/connection/wifi/step/ApConfigStep;->setMiioRouter(Ljava/lang/String; Ljava/lang/String; Ljava/lang/Class;)V
+    49  iput v0, v7, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCurrentIndex I
+    50  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mNextButton Landroid/widget/Button;
+    51  invoke-virtual v0, v3, Landroid/view/View;->setEnabled(Z)V
+    52  return-void 
 
---- startSearchNewDevice  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- startSearchNewDevice  (14 instr)
+     0  const/4 v0, 0
+     1  iput-boolean v0, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mGotoErrorPage Z
+     2  iget-object v1, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDeviceFinder Lcom/miot/service/connection/wifi/DeviceFinder;
+     3  iget-object v2, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mCallback Lcom/miot/service/connection/wifi/step/ConfigStep$DeviceFinderCallback;
+     4  iget-object v3, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mScanResult Landroid/net/wifi/ScanResult;
+     5  iget-wide v4, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDid J
+     6  invoke-static v4, v5, Ljava/lang/String;->valueOf(J)Ljava/lang/String;
+     7  move-result-object v4
+     8  iget-object v5, v6, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+     9  invoke-virtual v1, v2, v3, v4, v5, Lcom/miot/service/connection/wifi/DeviceFinder;->scanNewDevice(Lcom/miot/service/connection/wifi/step/ConfigStep$DeviceFinderCallback; Landroid/net/wifi/ScanResult; Ljava/lang/String; Landroid/content/Context;)V
+    10  iget v1, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mFindDeviceTime I
+    11  add-int/lit8 v1, v1, 1
+    12  iput v1, v6, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mFindDeviceTime I
+    13  return v0
 
---- stopConnection  (-1 instr)
-    !! 'DalvikCode' object has no attribute 'get_instructions'
+--- stopConnection  (27 instr)
+     0  new-instance v0, Lorg/json/JSONObject;
+     1  invoke-direct v0, Lorg/json/JSONObject;-><init>()V
+     2  const-string v1, "id"
+     3  iget v2, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mId I
+     4  invoke-virtual v0, v1, v2, Lorg/json/JSONObject;->put(Ljava/lang/String; I)Lorg/json/JSONObject;
+     5  const-string v1, "method"
+     6  const-string v2, "miIO.stop_diag_mode"
+     7  invoke-virtual v0, v1, v2, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+     8  const-string v1, "params"
+     9  const-string v2, ""
+    10  invoke-virtual v0, v1, v2, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+    11  goto +2h
+    12  nop 
+    13  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->getGatewayAddr()Ljava/lang/String;
+    14  move-result-object v3
+    15  invoke-static v3, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    16  move-result v1
+    17  if-eqz v1, +003h
+    18  return-void 
+    19  invoke-virtual v0, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+    20  move-result-object v4
+    21  iget-wide v5, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mDid J
+    22  iget-object v7, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep;->mToken Ljava/lang/String;
+    23  new-instance v8, Lcom/miot/service/connection/wifi/step/ApConfigStep$8;
+    24  invoke-direct v8, v9, Lcom/miot/service/connection/wifi/step/ApConfigStep$8;-><init>(Lcom/miot/service/connection/wifi/step/ApConfigStep;)V
+    25  invoke-static/range v3 ... v8, Lcom/xiaomi/miio/MiioLocalAPI;->async_rpc(Ljava/lang/String; Ljava/lang/String; J Ljava/lang/String; Lcom/xiaomi/miio/MiioLocalRpcResponse;)V
+    26  return-void 
 
-# apk/Yeelight_3.5.4_35402.apk: 17 Klassen, 5.9s
+# apk/Yeelight_3.5.4_35402.apk: 17 Klassen, 6.2s
