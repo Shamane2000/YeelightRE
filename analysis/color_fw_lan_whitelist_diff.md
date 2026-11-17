@@ -205,3 +205,38 @@ python3 tools/color_verify_diff.py        # rc=0 == PASS (51 Assertions)
 
 `tools/mrvl_disasm.py` braucht `capstone` (`pip install capstone`, auf devastator im venv
 `/home/jarvis/venv` installiert).
+
+## 10. Nachtrag — fw76-Re-Probe (Task `t_39c30d14`, 2026-11-17)
+
+Versuch, den in §8 Punkt 1 offenen Live-Nachweis für **fw 76** zu erbringen.
+Vollständiges Messprotokoll: `analysis/lan_probe_fw76_192.168.1.176.txt`.
+
+**Ergebnis: weiterhin negativ — das Gerät ist diesmal nicht nur „kein ARP“, sondern
+nachweislich im gesamten /24 abwesend.**
+
+| Prüfung | Werkzeug / Ort | Befund (2026-11-17T22:52–22:57Z) |
+| :-- | :-- | :-- |
+| Repo-Probe | `tools/lan_method_probe.py 192.168.1.176` (devastator) | `unreachable: OSError(113, 'No route to host')` |
+| ICMP | `ping` (devastator) | `Destination Host Unreachable`, 100 % Loss |
+| ARP | `ip neigh` (devastator) | `192.168.1.176 dev ens18 FAILED` |
+| TCP 55443 | `/dev/tcp` (devastator) | `No route to host` |
+| SSDP `/24` | M-SEARCH `ST: wifi_bulb` (Hermes) | nur `192.168.1.168` antwortet (= fw 65) |
+| TCP/55443 `/24`-Sweep | connect-Scan .2–.254 (devastator) | offen: `.112 .126 .168 .173 .174 .175 .177 .178` — **`.176` fehlt** |
+| Identität der offenen Hosts | `get_prop` + `ip neigh` | `.168` = `["65","color","1"]`; `.112/.126` = TLS-Banner; `.173–.178` = accept+close, kein JSON, kein SSDP, fünf verschiedene OUIs ⇒ keine Yeelight-Bulbs |
+| Home Assistant | `GET /api/states/light.kinderzimmer_deckenlampe` | `state: unavailable`, `restored: true`, `last_changed: 2026-11-17T22:17:29Z` |
+
+Ein DHCP-Lease-Wechsel ist damit ausgeschlossen: die Lampe ist nicht „woanders“, sie ist
+stromlos/offline. `did 0371f839`, `model=color`, `fw_ver=76` (Geräte-Inventar
+`docs/01_live_findings.md` §Zeile 6) bleibt unverändert die Zielkennung.
+
+**fw76-Binary weiterhin nicht beschaffbar.** Die einzige Datei mit fw76 im Namen,
+`upd_yeelink.light.color1_1.4.2_0076.bin`, ist **138 Bytes** groß
+(SHA256 `9cf7341e75adbb350fe0ba66f95bd417f90eec5d06bea65c8b8b057e83559de6`) und enthält
+eine Aliyun-OSS-Fehlerseite („Object Access Denied“, `region=awsde0`) — keinen
+MRVL-Container. Damit bleibt §8 Punkt 2 (SPI-Dump `GD25Q16CSIG` →
+`firmware/color_142_0076/`) der einzige Weg zum echten Binärdiff.
+
+**Kein Regressionsrisiko:** `python3 tools/color_verify_diff.py` → `rc=0` (51 Assertions,
+PASS) nach diesem Lauf unverändert. Die Kernaussage aus §4/§7 (kein Build hat
+`set_ps`/`get_ps`/`cfg_lan_ctrl` über LAN whitelisted) wird durch den Nachtrag weder
+gestützt noch widerlegt — für fw 76 bleibt sie **statisch begründet, nicht live gemessen**.
