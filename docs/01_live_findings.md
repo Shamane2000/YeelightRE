@@ -15,3 +15,13 @@
     - Previously captured AP token times out on `miIO.info`, `set_developer_mode`, `set_ps`, `get_prop`.
     - TCP `55443` returns `Errno 111 Connection refused` (LAN Control disabled after factory reset).
     - mDNS `_hap._tcp` advertises `YeelightColorBulb-6E16` (`md=YLDP06YL`, `sf=1`).
+
+## Breakthrough: 100% App-Free Provisioning + LAN Control Verified (2026-11-17 20:20)
+- **Fix:** `set_developer_mode` is a `python-miio` wrapper only; the real device RPC is `set_ps ["cfg_lan_ctrl", "1"]` (verified via `frodo` research `t_40834df2`).
+- **Autonomous Provisioning on Jarvis (VM 100 + MediaTek `MT7601U` USB passthrough `148f:7601`):**
+  - Connected `wlx003676546389` to `yeelink-light-color2_miap6E16` (`ipv4.never-default=yes`).
+  - Captured AP token `0f27f4ecba940fd63904abc1df7e2d1e` (`did=05eb8034`, `2.0.6_0065`).
+  - `set_ps ["cfg_lan_ctrl", "1"]` in AP mode returned `{"id": 11, "result": ["ok"]}`.
+  - `get_prop ["lan_ctrl"]` readback returned `{"id": 20, "result": ["1"]}`.
+  - `miIO.config_router` (`uid: 0`, `tz: Europe/Berlin`) returned `{"id": 21, "result": ["ok"]}`.
+  - Bulb joined `HomeLan001` at `192.168.1.115` with **TCP `55443` and SSDP `1982` immediately open** (`{"id":1,"result":["on","100","3500","2"]}`).
