@@ -1,0 +1,91 @@
+# apk/Yeelight_3.2.58_3258.apk  dex=['classes.dex', 'classes2.dex']  scan=12.6s
+==============================================================================
+### Nadel 'is_local_control_user': 3 Methoden
+
+--- [classes2.dex] Lcom/yeelight/cherry/ui/activity/MainActivity$q;->a  (46 instr)
+     0  const-string v0, "code"
+     1  invoke-static Lcom/yeelight/cherry/ui/activity/MainActivity;->y()Ljava/lang/String;
+     2  new-instance v1, Ljava/lang/StringBuilder;
+     3  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     4  const-string v2, "is_local_control_user onSuccess: "
+     5  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  invoke-virtual v1, v4, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     8  invoke-static v4, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+     9  move-result v1
+    10  if-eqz v1, +003h
+    11  return-void 
+    12  new-instance v1, Lorg/json/JSONObject;
+    13  invoke-direct v1, v4, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
+    14  invoke-virtual v1, v0, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    15  move-result v4
+    16  if-eqz v4, +042h
+    17  invoke-virtual v1, v0, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
+    18  move-result v4
+    19  invoke-static Lcom/yeelight/cherry/ui/activity/MainActivity;->y()Ljava/lang/String;
+    20  new-instance v0, Ljava/lang/StringBuilder;
+    21  invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    22  const-string v1, "is_local_control_user code: "
+    23  invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    24  invoke-virtual v0, v4, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    25  invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    26  const/4 v0, 1
+    27  if-ne v4, v0, +028h
+    28  new-instance v4, Ljava/lang/StringBuilder;
+    29  invoke-direct v4, Ljava/lang/StringBuilder;-><init>()V
+    30  invoke-static Lcom/yeelight/yeelib/f/a;->n()Lcom/yeelight/yeelib/f/a;
+    31  move-result-object v1
+    32  invoke-virtual v1, Lcom/yeelight/yeelib/f/a;->f()Ljava/lang/String;
+    33  move-result-object v1
+    34  invoke-virtual v4, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    35  const-string v1, "GOOGLE_LOCAL_USER_HAD_SHOW"
+    36  invoke-virtual v4, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    37  invoke-virtual v4, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    38  move-result-object v4
+    39  invoke-static v4, v0, Lcom/yeelight/yeelib/utils/v;->b(Ljava/lang/String; Z)V
+    40  iget-object v4, v3, Lcom/yeelight/cherry/ui/activity/MainActivity$q;->a Lcom/yeelight/cherry/ui/activity/MainActivity;
+    41  invoke-static v4, Lcom/yeelight/cherry/ui/activity/MainActivity;->m(Lcom/yeelight/cherry/ui/activity/MainActivity;)V
+    42  goto +5h
+    43  move-exception v4
+    44  invoke-virtual v4, Lorg/json/JSONException;->printStackTrace()V
+    45  return-void 
+
+--- [classes2.dex] Lcom/yeelight/cherry/ui/activity/MainActivity$q;->onFailure  (8 instr)
+     0  invoke-static Lcom/yeelight/cherry/ui/activity/MainActivity;->y()Ljava/lang/String;
+     1  new-instance v2, Ljava/lang/StringBuilder;
+     2  invoke-direct v2, Ljava/lang/StringBuilder;-><init>()V
+     3  const-string v0, "is_local_control_user onFailure: "
+     4  invoke-virtual v2, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     5  invoke-virtual v2, v3, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  invoke-virtual v2, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     7  return-void 
+
+--- [classes2.dex] Lcom/yeelight/cherry/ui/activity/MainActivity;->F  (28 instr)
+     0  new-instance v0, Ljava/lang/StringBuilder;
+     1  invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+     2  invoke-static Lcom/yeelight/yeelib/f/a;->n()Lcom/yeelight/yeelib/f/a;
+     3  move-result-object v1
+     4  invoke-virtual v1, Lcom/yeelight/yeelib/f/a;->f()Ljava/lang/String;
+     5  move-result-object v1
+     6  invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     7  const-string v1, "GOOGLE_LOCAL_USER_HAD_SHOW"
+     8  invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     9  invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    10  move-result-object v0
+    11  const/4 v1, 0
+    12  invoke-static v0, v1, Lcom/yeelight/yeelib/utils/v;->a(Ljava/lang/String; Z)Z
+    13  move-result v0
+    14  new-instance v1, Ljava/lang/StringBuilder;
+    15  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+    16  const-string v2, "requestIsGoogleHomeLocalUser: "
+    17  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    18  invoke-virtual v1, v0, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+    19  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    20  if-eqz v0, +003h
+    21  return-void 
+    22  const-class v0, Ljava/lang/String;
+    23  new-instance v1, Lcom/yeelight/cherry/ui/activity/MainActivity$q;
+    24  invoke-direct v1, v3, Lcom/yeelight/cherry/ui/activity/MainActivity$q;-><init>(Lcom/yeelight/cherry/ui/activity/MainActivity;)V
+    25  const-string v2, "https://google-home.yeelight.com/api/v2/is_local_control_user"
+    26  invoke-static v2, v0, v1, Lcom/yeelight/yeelib/h/c;->b(Ljava/lang/String; Ljava/lang/Class; Lcom/yeelight/yeelib/h/g/b;)V
+    27  return-void 

@@ -1,0 +1,275 @@
+==============================================================================
+Yeelight_3.2.34_3234.apk  size=35479231  dex=['classes.dex', 'classes2.dex']
+sha256=82612c09e9a192ddb5f2f68982a271a710aaa8af703856e051bd095e94a13469  versionGuess=['3.2.34']
+  crypto/AES/CBC                             2  {'classes.dex': 2}
+  crypto/AES/ECB                             2  {'classes.dex': 2}
+  crypto/HMAC                                4  {'classes.dex': 3, 'classes2.dex': 1}
+  crypto/JNIBridge                           2  {'classes.dex': 2}
+  crypto/decrypt                            16  {'classes.dex': 12, 'classes2.dex': 4}
+  crypto/encrypt                            74  {'classes.dex': 24, 'classes2.dex': 50}
+  crypto/md5                                18  {'classes.dex': 13, 'classes2.dex': 5}
+  crypto/sha1                                5  {'classes.dex': 5}
+  crypto/sign                              757  {'classes.dex': 585, 'classes2.dex': 172}
+  lan_ctrl/LanControl                       14  {'classes2.dex': 14}
+  lan_ctrl/cfg_lan_ctrl                      1  {'classes2.dex': 1}
+  lan_ctrl/developer_mode                    4  {'classes.dex': 2, 'classes2.dex': 2}
+  lan_ctrl/isLanCtrlEnabled                  2  {'classes.dex': 2}
+  lan_ctrl/lan_ctrl                          1  {'classes2.dex': 1}
+  local/239.255.255.250                      1  {'classes2.dex': 1}
+  local/UDP                                  7  {'classes.dex': 4, 'classes2.dex': 3}
+  local/discovery                           66  {'classes.dex': 56, 'classes2.dex': 10}
+  local/multicast                           13  {'classes.dex': 3, 'classes2.dex': 10}
+  local/ssdp                                 6  {'classes2.dex': 6}
+  local/udp                                  3  {'classes.dex': 2, 'classes2.dex': 1}
+  ota/FirmwareUpdate                        15  {'classes.dex': 10, 'classes2.dex': 5}
+  ota/OTA                                   40  {'classes.dex': 23, 'classes2.dex': 17}
+  ota/checkFirmware                          1  {'classes2.dex': 1}
+  ota/firmware                             124  {'classes.dex': 77, 'classes2.dex': 47}
+  ota/firmwareVersion                        1  {'classes.dex': 1}
+  ota/latest_version                        11  {'classes.dex': 6, 'classes2.dex': 5}
+  ota/ota                                  389  {'classes.dex': 295, 'classes2.dex': 94}
+  ota/upgrade                               60  {'classes.dex': 23, 'classes2.dex': 37}
+  provisioning/ApConfig                     11  {'classes.dex': 11}
+  provisioning/bind_key                      3  {'classes.dex': 3}
+  provisioning/config_router                 1  {'classes.dex': 1}
+  provisioning/country_domain                1  {'classes.dex': 1}
+  provisioning/gmt_offset                    1  {'classes.dex': 1}
+  provisioning/miIO.                         6  {'classes.dex': 4, 'classes2.dex': 2}
+  provisioning/miIO.config_router            1  {'classes.dex': 1}
+  provisioning/setMiioRouter                 3  {'classes.dex': 3}
+  token/FULL_TOKEN                           1  {'classes.dex': 1}
+  token/MiioLocalAPI                        16  {'classes.dex': 16}
+  token/async_get_token                      1  {'classes.dex': 1}
+  token/getProp                             52  {'classes.dex': 19, 'classes2.dex': 33}
+  token/get_token                            4  {'classes.dex': 4}
+==============================================================================
+Yeelight_3.2.58_3258.apk  size=40078871  dex=['classes.dex', 'classes2.dex']
+sha256=06b6c2669098df601ea27af28e380718e688a512cd6bcea7dc9db0839610cea0  versionGuess=['3.2.58']
+  crypto/AES/CBC                             2  {'classes.dex': 2}
+  crypto/AES/ECB                             2  {'classes.dex': 2}
+  crypto/HMAC                                5  {'classes.dex': 3, 'classes2.dex': 2}
+  crypto/JNIBridge                           2  {'classes.dex': 2}
+  crypto/decrypt                            16  {'classes.dex': 12, 'classes2.dex': 4}
+  crypto/encrypt                            80  {'classes.dex': 27, 'classes2.dex': 53}
+  crypto/md5                                18  {'classes.dex': 13, 'classes2.dex': 5}
+  crypto/sha1                                7  {'classes.dex': 6, 'classes2.dex': 1}
+  crypto/sign                              417  {'classes.dex': 251, 'classes2.dex': 166}
+  lan_ctrl/LanControl                        9  {'classes2.dex': 9}
+  lan_ctrl/cfg_lan_ctrl                      1  {'classes2.dex': 1}
+  lan_ctrl/developer_mode                    4  {'classes.dex': 2, 'classes2.dex': 2}
+  lan_ctrl/isLanCtrlEnabled                  2  {'classes.dex': 2}
+  lan_ctrl/lan_ctrl                          1  {'classes2.dex': 1}
+  local/239.255.255.250                      1  {'classes2.dex': 1}
+  local/UDP                                  7  {'classes.dex': 4, 'classes2.dex': 3}
+  local/discovery                           63  {'classes.dex': 56, 'classes2.dex': 7}
+  local/local_control                        4  {'classes2.dex': 4}
+  local/multicast                           13  {'classes2.dex': 13}
+  local/ssdp                                 6  {'classes2.dex': 6}
+  local/udp                                  3  {'classes.dex': 2, 'classes2.dex': 1}
+  ota/FirmwareUpdate                        16  {'classes.dex': 12, 'classes2.dex': 4}
+  ota/OTA                                   40  {'classes.dex': 29, 'classes2.dex': 11}
+  ota/checkFirmware                          1  {'classes2.dex': 1}
+  ota/firmware                             117  {'classes.dex': 76, 'classes2.dex': 41}
+  ota/firmwareVersion                        1  {'classes.dex': 1}
+  ota/latest_version                        11  {'classes.dex': 6, 'classes2.dex': 5}
+  ota/ota                                  419  {'classes.dex': 319, 'classes2.dex': 100}
+  ota/upgrade                               49  {'classes.dex': 24, 'classes2.dex': 25}
+  provisioning/ApConfig                     12  {'classes.dex': 12}
+  provisioning/bind_key                      3  {'classes.dex': 3}
+  provisioning/config_router                 1  {'classes.dex': 1}
+  provisioning/country_domain                1  {'classes.dex': 1}
+  provisioning/gmt_offset                    1  {'classes.dex': 1}
+  provisioning/miIO.                         6  {'classes.dex': 4, 'classes2.dex': 2}
+  provisioning/miIO.config_router            1  {'classes.dex': 1}
+  provisioning/setMiioRouter                 3  {'classes.dex': 3}
+  token/FULL_TOKEN                           1  {'classes.dex': 1}
+  token/MiioLocalAPI                        16  {'classes.dex': 16}
+  token/async_get_token                      1  {'classes.dex': 1}
+  token/getProp                             51  {'classes.dex': 20, 'classes2.dex': 31}
+  token/get_token                            3  {'classes.dex': 3}
+==============================================================================
+Yeelight_3.3.04_3304.apk  size=40423363  dex=['classes.dex', 'classes2.dex']
+sha256=a1a66500140fb2cf6d9c9f292f4b96fbf82d0811352c4490689a71d623c5e009  versionGuess=['3.3.04']
+  crypto/AES/CBC                             2  {'classes.dex': 1, 'classes2.dex': 1}
+  crypto/AES/ECB                             2  {'classes.dex': 2}
+  crypto/HMAC                                5  {'classes.dex': 3, 'classes2.dex': 2}
+  crypto/JNIBridge                           2  {'classes.dex': 2}
+  crypto/decrypt                            16  {'classes.dex': 10, 'classes2.dex': 6}
+  crypto/encrypt                            82  {'classes.dex': 20, 'classes2.dex': 62}
+  crypto/md5                                19  {'classes.dex': 13, 'classes2.dex': 6}
+  crypto/sha1                                6  {'classes.dex': 6}
+  crypto/sign                              413  {'classes.dex': 245, 'classes2.dex': 168}
+  lan_ctrl/LanControl                        9  {'classes2.dex': 9}
+  lan_ctrl/cfg_lan_ctrl                      1  {'classes2.dex': 1}
+  lan_ctrl/developer_mode                    2  {'classes2.dex': 2}
+  lan_ctrl/isLanCtrlEnabled                  2  {'classes.dex': 2}
+  lan_ctrl/lan_ctrl                          1  {'classes2.dex': 1}
+  local/239.255.255.250                      1  {'classes2.dex': 1}
+  local/UDP                                  7  {'classes.dex': 4, 'classes2.dex': 3}
+  local/discovery                           63  {'classes.dex': 56, 'classes2.dex': 7}
+  local/local_control                        3  {'classes2.dex': 3}
+  local/multicast                           13  {'classes.dex': 3, 'classes2.dex': 10}
+  local/ssdp                                 6  {'classes2.dex': 6}
+  local/udp                                  3  {'classes.dex': 2, 'classes2.dex': 1}
+  ota/FirmwareUpdate                        16  {'classes.dex': 12, 'classes2.dex': 4}
+  ota/OTA                                   40  {'classes.dex': 29, 'classes2.dex': 11}
+  ota/checkFirmware                          1  {'classes2.dex': 1}
+  ota/firmware                              84  {'classes.dex': 33, 'classes2.dex': 51}
+  ota/firmwareVersion                        1  {'classes.dex': 1}
+  ota/latest_version                         6  {'classes.dex': 1, 'classes2.dex': 5}
+  ota/ota                                  415  {'classes.dex': 316, 'classes2.dex': 99}
+  ota/upgrade                               42  {'classes.dex': 12, 'classes2.dex': 30}
+  provisioning/ApConfig                     18  {'classes.dex': 18}
+  provisioning/bind_key                      4  {'classes.dex': 3, 'classes2.dex': 1}
+  provisioning/config_router                 1  {'classes.dex': 1}
+  provisioning/country_domain                2  {'classes.dex': 1, 'classes2.dex': 1}
+  provisioning/gmt_offset                    2  {'classes.dex': 1, 'classes2.dex': 1}
+  provisioning/miIO.                         6  {'classes.dex': 4, 'classes2.dex': 2}
+  provisioning/miIO.config_router            1  {'classes.dex': 1}
+  provisioning/setMiioRouter                 4  {'classes.dex': 4}
+  token/FULL_TOKEN                           1  {'classes.dex': 1}
+  token/MiioLocalAPI                        16  {'classes.dex': 16}
+  token/async_get_token                      3  {'classes.dex': 3}
+  token/getProp                             52  {'classes.dex': 21, 'classes2.dex': 31}
+  token/get_token                            5  {'classes.dex': 5}
+==============================================================================
+Yeelight_3.3.18_3318.apk  size=41200721  dex=['classes.dex', 'classes2.dex']
+sha256=e403e2751bb0de47580150c6fed53fd4a3350ae5d41d6378c705f7b5d0849c42  versionGuess=['3.3.18']
+  crypto/AES/CBC                             2  {'classes.dex': 1, 'classes2.dex': 1}
+  crypto/AES/ECB                             1  {'classes2.dex': 1}
+  crypto/HMAC                                7  {'classes.dex': 3, 'classes2.dex': 4}
+  crypto/JNIBridge                           2  {'classes2.dex': 2}
+  crypto/decrypt                            17  {'classes.dex': 5, 'classes2.dex': 12}
+  crypto/encrypt                            89  {'classes.dex': 13, 'classes2.dex': 76}
+  crypto/md5                                13  {'classes.dex': 3, 'classes2.dex': 10}
+  crypto/sha1                                7  {'classes.dex': 5, 'classes2.dex': 2}
+  crypto/sign                              422  {'classes.dex': 243, 'classes2.dex': 179}
+  lan_ctrl/LanControl                       10  {'classes2.dex': 10}
+  lan_ctrl/cfg_lan_ctrl                      1  {'classes2.dex': 1}
+  lan_ctrl/developer_mode                    2  {'classes2.dex': 2}
+  lan_ctrl/isLanCtrlEnabled                  2  {'classes.dex': 2}
+  lan_ctrl/lan_ctrl                          1  {'classes2.dex': 1}
+  local/239.255.255.250                      1  {'classes2.dex': 1}
+  local/UDP                                  7  {'classes2.dex': 7}
+  local/discovery                           63  {'classes.dex': 56, 'classes2.dex': 7}
+  local/local_control                        3  {'classes2.dex': 3}
+  local/multicast                           13  {'classes.dex': 3, 'classes2.dex': 10}
+  local/ssdp                                 6  {'classes2.dex': 6}
+  local/udp                                  4  {'classes2.dex': 4}
+  ota/FirmwareUpdate                        16  {'classes.dex': 12, 'classes2.dex': 4}
+  ota/OTA                                   72  {'classes.dex': 52, 'classes2.dex': 20}
+  ota/checkFirmware                          1  {'classes2.dex': 1}
+  ota/firmware                              84  {'classes.dex': 33, 'classes2.dex': 51}
+  ota/firmwareVersion                        1  {'classes.dex': 1}
+  ota/latest_version                         6  {'classes.dex': 1, 'classes2.dex': 5}
+  ota/ota                                  573  {'classes.dex': 430, 'classes2.dex': 143}
+  ota/upgrade                               41  {'classes.dex': 10, 'classes2.dex': 31}
+  provisioning/ApConfig                     18  {'classes.dex': 18}
+  provisioning/bind_key                      4  {'classes.dex': 3, 'classes2.dex': 1}
+  provisioning/config_router                 1  {'classes.dex': 1}
+  provisioning/country_domain                2  {'classes.dex': 1, 'classes2.dex': 1}
+  provisioning/gmt_offset                    2  {'classes.dex': 1, 'classes2.dex': 1}
+  provisioning/miIO.                         6  {'classes.dex': 3, 'classes2.dex': 3}
+  provisioning/miIO.config_router            1  {'classes.dex': 1}
+  provisioning/setMiioRouter                 4  {'classes.dex': 4}
+  token/FULL_TOKEN                           1  {'classes2.dex': 1}
+  token/MiioLocalAPI                        17  {'classes.dex': 1, 'classes2.dex': 16}
+  token/async_get_token                      4  {'classes.dex': 3, 'classes2.dex': 1}
+  token/getProp                             52  {'classes.dex': 21, 'classes2.dex': 31}
+  token/get_token                            6  {'classes.dex': 3, 'classes2.dex': 3}
+==============================================================================
+Yeelight_3.4.13_3413.apk  size=41785642  dex=['classes.dex', 'classes2.dex']
+sha256=1aaf4c766887998e5da6851bdc91cc696b7efc6ef37d43f574cd88090355619b  versionGuess=['3.4.13']
+  crypto/AES/CBC                             2  {'classes.dex': 1, 'classes2.dex': 1}
+  crypto/AES/ECB                             1  {'classes2.dex': 1}
+  crypto/HMAC                                7  {'classes.dex': 3, 'classes2.dex': 4}
+  crypto/JNIBridge                           2  {'classes2.dex': 2}
+  crypto/decrypt                            17  {'classes.dex': 5, 'classes2.dex': 12}
+  crypto/encrypt                            91  {'classes.dex': 13, 'classes2.dex': 78}
+  crypto/hmac                                6  {'classes.dex': 4, 'classes2.dex': 2}
+  crypto/md5                                14  {'classes.dex': 3, 'classes2.dex': 11}
+  crypto/sha1                                8  {'classes.dex': 5, 'classes2.dex': 3}
+  crypto/sign                              441  {'classes.dex': 244, 'classes2.dex': 197}
+  lan_ctrl/LanControl                       10  {'classes2.dex': 10}
+  lan_ctrl/cfg_lan_ctrl                      1  {'classes2.dex': 1}
+  lan_ctrl/developer_mode                    2  {'classes2.dex': 2}
+  lan_ctrl/isLanCtrlEnabled                  3  {'classes.dex': 2, 'classes2.dex': 1}
+  lan_ctrl/lan_ctrl                          1  {'classes2.dex': 1}
+  local/239.255.255.250                      1  {'classes2.dex': 1}
+  local/UDP                                  7  {'classes2.dex': 7}
+  local/discovery                           67  {'classes.dex': 9, 'classes2.dex': 58}
+  local/local_control                        3  {'classes2.dex': 3}
+  local/multicast                           13  {'classes.dex': 3, 'classes2.dex': 10}
+  local/ssdp                                 6  {'classes2.dex': 6}
+  local/udp                                  3  {'classes2.dex': 3}
+  ota/FirmwareUpdate                        16  {'classes.dex': 12, 'classes2.dex': 4}
+  ota/OTA                                   76  {'classes.dex': 53, 'classes2.dex': 23}
+  ota/checkFirmware                          1  {'classes2.dex': 1}
+  ota/firmware                              85  {'classes.dex': 31, 'classes2.dex': 54}
+  ota/firmwareVersion                        1  {'classes.dex': 1}
+  ota/latest_version                         6  {'classes.dex': 1, 'classes2.dex': 5}
+  ota/ota                                  654  {'classes.dex': 453, 'classes2.dex': 201}
+  ota/upgrade                               42  {'classes.dex': 10, 'classes2.dex': 32}
+  provisioning/ApConfig                     18  {'classes2.dex': 18}
+  provisioning/apConfig                      1  {'classes.dex': 1}
+  provisioning/bind_key                      5  {'classes.dex': 3, 'classes2.dex': 2}
+  provisioning/config_router                 1  {'classes2.dex': 1}
+  provisioning/country_domain                2  {'classes2.dex': 2}
+  provisioning/gmt_offset                    3  {'classes.dex': 1, 'classes2.dex': 2}
+  provisioning/miIO.                         6  {'classes.dex': 1, 'classes2.dex': 5}
+  provisioning/miIO.config_router            1  {'classes2.dex': 1}
+  provisioning/setMiioRouter                 4  {'classes2.dex': 4}
+  token/FULL_TOKEN                           1  {'classes2.dex': 1}
+  token/MiioLocalAPI                        17  {'classes.dex': 1, 'classes2.dex': 16}
+  token/async_get_token                      4  {'classes.dex': 1, 'classes2.dex': 3}
+  token/getProp                             51  {'classes.dex': 19, 'classes2.dex': 32}
+  token/get_token                            6  {'classes.dex': 1, 'classes2.dex': 5}
+==============================================================================
+Yeelight_3.5.4_35402.apk  size=38089399  dex=['classes.dex', 'classes2.dex']
+sha256=c5ca5a5e353c0c4ad2ed44dff1e7c5d7635b19b11dbe7566ca5d3cc60f9d8fc7  versionGuess=['3.5.4']
+  crypto/AES/CBC                             3  {'classes.dex': 2, 'classes2.dex': 1}
+  crypto/AES/ECB                             1  {'classes.dex': 1}
+  crypto/HMAC                                5  {'classes.dex': 3, 'classes2.dex': 2}
+  crypto/JNIBridge                           2  {'classes.dex': 2}
+  crypto/decrypt                            19  {'classes.dex': 13, 'classes2.dex': 6}
+  crypto/encrypt                            94  {'classes.dex': 28, 'classes2.dex': 66}
+  crypto/hmac                                6  {'classes.dex': 4, 'classes2.dex': 2}
+  crypto/md5                                14  {'classes.dex': 6, 'classes2.dex': 8}
+  crypto/sha1                                5  {'classes.dex': 4, 'classes2.dex': 1}
+  crypto/sign                              330  {'classes.dex': 172, 'classes2.dex': 158}
+  lan_ctrl/LanControl                       10  {'classes2.dex': 10}
+  lan_ctrl/cfg_lan_ctrl                      1  {'classes2.dex': 1}
+  lan_ctrl/developer_mode                    2  {'classes2.dex': 2}
+  lan_ctrl/isLanCtrlEnabled                  2  {'classes.dex': 2}
+  lan_ctrl/lan_ctrl                          1  {'classes2.dex': 1}
+  local/239.255.255.250                      1  {'classes2.dex': 1}
+  local/UDP                                  7  {'classes.dex': 4, 'classes2.dex': 3}
+  local/discovery                           61  {'classes.dex': 55, 'classes2.dex': 6}
+  local/local_control                        3  {'classes2.dex': 3}
+  local/multicast                           13  {'classes.dex': 3, 'classes2.dex': 10}
+  local/ssdp                                 6  {'classes2.dex': 6}
+  local/udp                                  4  {'classes.dex': 3, 'classes2.dex': 1}
+  ota/FirmwareUpdate                        16  {'classes.dex': 12, 'classes2.dex': 4}
+  ota/OTA                                   62  {'classes.dex': 50, 'classes2.dex': 12}
+  ota/checkFirmware                          1  {'classes2.dex': 1}
+  ota/firmware                              89  {'classes.dex': 25, 'classes2.dex': 64}
+  ota/firmwareVersion                        1  {'classes.dex': 1}
+  ota/latest_version                         8  {'classes.dex': 1, 'classes2.dex': 7}
+  ota/ota                                  614  {'classes.dex': 415, 'classes2.dex': 199}
+  ota/upgrade                               44  {'classes.dex': 12, 'classes2.dex': 32}
+  provisioning/ApConfig                     18  {'classes.dex': 18}
+  provisioning/apConfig                      1  {'classes.dex': 1}
+  provisioning/bind_key                      4  {'classes.dex': 3, 'classes2.dex': 1}
+  provisioning/config_router                 1  {'classes.dex': 1}
+  provisioning/country_domain                2  {'classes.dex': 1, 'classes2.dex': 1}
+  provisioning/gmt_offset                    2  {'classes.dex': 1, 'classes2.dex': 1}
+  provisioning/miIO.                         6  {'classes.dex': 4, 'classes2.dex': 2}
+  provisioning/miIO.config_router            1  {'classes.dex': 1}
+  provisioning/setMiioRouter                 4  {'classes.dex': 4}
+  token/FULL_TOKEN                           1  {'classes.dex': 1}
+  token/MiioLocalAPI                        16  {'classes.dex': 16}
+  token/async_get_token                      3  {'classes.dex': 3}
+  token/getProp                             52  {'classes.dex': 21, 'classes2.dex': 31}
+  token/get_token                            5  {'classes.dex': 5}
+
+JSON -> analysis/apk_string_matrix.json

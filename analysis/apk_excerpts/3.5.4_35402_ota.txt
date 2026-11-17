@@ -1,0 +1,6 @@
+# apk/Yeelight_3.5.4_35402.apk  dex=['classes.dex', 'classes2.dex']  scan=14.3s
+==============================================================================
+### Nadel 'latest_version': 3 Methoden
+    [classes.dex] Lcom/miot/service/bluetooth/RestAPIImpl;->getBluetoothFirmwareUpdateInfo  (66 instr)
+    [classes2.dex] Lcom/yeelight/yeelib/managers/q$c;->b  (59 instr)
+    [classes2.dex] Lcom/yeelight/cherry/ui/activity/QuickCurtainSettingActivity;->B0  (36 instr)

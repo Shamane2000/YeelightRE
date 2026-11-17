@@ -1,0 +1,581 @@
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+
+--- <init>  (4 instr)
+     0  invoke-direct v1, Ljava/lang/Object;-><init>()V
+     1  const/4 v0, -1
+     2  iput v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->startPercent I
+     3  return-void 
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ConfigStep$DeviceFinderCallback;
+
+--- onDeviceConnectionBind  (0 instr)
+
+--- onDeviceConnectionFailure  (0 instr)
+
+--- onDeviceConnectionSuccess  (0 instr)
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ConfigStep;
+
+--- <init>  (23 instr)
+     0  invoke-direct v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep;-><init>()V
+     1  const-wide/16 v0, 0
+     2  iput-wide v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimStartTime J
+     3  iput-wide v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+     4  const/4 v2, 0
+     5  iput v2, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mCurStepStartTime I
+     6  iput-wide v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mOriginAnimStartTime J
+     7  iput-wide v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigStartTime J
+     8  iput-boolean v2, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mDownloadAfterConfig Z
+     9  new-instance v3, Ljava/util/ArrayList;
+    10  invoke-direct v3, Ljava/util/ArrayList;-><init>()V
+    11  iput-object v3, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+    12  new-instance v3, Ljava/util/LinkedList;
+    13  invoke-direct v3, Ljava/util/LinkedList;-><init>()V
+    14  iput-object v3, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    15  new-instance v3, Ljava/util/LinkedList;
+    16  invoke-direct v3, Ljava/util/LinkedList;-><init>()V
+    17  iput-object v3, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    18  iput-wide v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartTime J
+    19  iput v2, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartPercent I
+    20  iput v2, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mEndPercent I
+    21  iput-wide v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mDuring J
+    22  return-void 
+
+--- startAnimation  (11 instr)
+     0  invoke-static Ljava/lang/System;->currentTimeMillis()J
+     1  move-result-wide v0
+     2  iput-wide v0, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartTime J
+     3  iput v3, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartPercent I
+     4  iput v4, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->mEndPercent I
+     5  iput-wide v5, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->mDuring J
+     6  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     7  move-result-object v3
+     8  const/16 v4, 1000
+     9  invoke-virtual v3, v4, Landroid/os/Handler;->sendEmptyMessage(I)Z
+    10  return-void 
+
+--- startConfig  (72 instr)
+     0  const/4 v0, 0
+     1  iput v0, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mCurStepStartTime I
+     2  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressBar Lcom/miot/service/common/widget/PieProgressBar;
+     3  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mBarText Landroid/widget/TextView;
+     4  invoke-virtual v0, v1, Lcom/miot/service/common/widget/PieProgressBar;->setPercentView(Landroid/widget/TextView;)V
+     5  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->getCurrentStageIndex()I
+     6  move-result v0
+     7  const/4 v1, -1
+     8  if-ne v0, v1, +003h
+     9  return-void 
+    10  iget-object v2, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    11  invoke-interface v2, Ljava/util/Collection;->isEmpty()Z
+    12  move-result v2
+    13  if-nez v2, +022h
+    14  iget-object v2, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    15  invoke-interface v2, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    16  move-result-object v2
+    17  check-cast v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    18  iget v2, v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->index I
+    19  if-eq v2, v0, +016h
+    20  iget-object v2, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    21  invoke-interface v2, Ljava/util/Queue;->poll()Ljava/lang/Object;
+    22  iget-object v2, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    23  invoke-interface v2, Ljava/util/Queue;->poll()Ljava/lang/Object;
+    24  move-result-object v2
+    25  check-cast v2, Ljava/lang/Integer;
+    26  invoke-virtual v2, Ljava/lang/Integer;->intValue()I
+    27  move-result v2
+    28  iput v2, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mCurStepStartTime I
+    29  goto -27h
+    30  iget v2, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mCurStepStartTime I
+    31  iget-object v3, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    32  invoke-interface v3, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    33  move-result-object v3
+    34  check-cast v3, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    35  iget v3, v3, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->startPercent I
+    36  if-eq v3, v1, +00ch
+    37  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    38  invoke-interface v1, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    39  move-result-object v1
+    40  check-cast v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    41  iget v2, v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->startPercent I
+    42  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    43  invoke-interface v1, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    44  move-result-object v1
+    45  check-cast v1, Ljava/lang/Integer;
+    46  invoke-virtual v1, Ljava/lang/Integer;->intValue()I
+    47  move-result v1
+    48  iget-object v3, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    49  invoke-interface v3, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    50  move-result-object v3
+    51  check-cast v3, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    52  iget-wide v3, v3, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    53  invoke-direct v5, v2, v1, v3, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->startAnimation(I I J)V
+    54  invoke-virtual v5, v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->startConnection(I)V
+    55  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    56  move-result-object v0
+    57  if-eqz v0, +015h
+    58  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    59  move-result-object v0
+    60  iget-object v1, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    61  invoke-interface v1, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    62  move-result-object v1
+    63  check-cast v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    64  iget-wide v1, v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    65  const/16 v3, 110
+    66  invoke-virtual v0, v3, v1, v2, Landroid/os/Handler;->sendEmptyMessageDelayed(I J)Z
+    67  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mMainTitle Landroid/widget/TextView;
+    68  invoke-virtual v5, v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->setMainTitle(Landroid/widget/TextView;)V
+    69  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mMainSubTitle Landroid/widget/TextView;
+    70  invoke-virtual v5, v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->setSubMainTitle(Landroid/widget/TextView;)V
+    71  return-void 
+
+--- getAllConfigStages  (0 instr)
+
+--- getCurrentStageIndex  (0 instr)
+
+--- handleMessage  (125 instr)
+     0  invoke-static Lcom/miot/service/log/MyLogger;->getInstance()Lcom/miot/service/log/MyLogger;
+     1  move-result-object v0
+     2  new-instance v1, Ljava/lang/StringBuilder;
+     3  invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+     4  const-string v2, "handleMessage, msg.what = "
+     5  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     6  iget v2, v10, Landroid/os/Message;->what I
+     7  invoke-virtual v1, v2, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+     8  invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+     9  move-result-object v1
+    10  const-string v2, "ConfigStep"
+    11  invoke-virtual v0, v2, v1, Lcom/miot/service/log/MyLogger;->log(Ljava/lang/String; Ljava/lang/String;)V
+    12  iget v10, v10, Landroid/os/Message;->what I
+    13  const/16 v0, 110
+    14  if-eq v10, v0, +0c6h
+    15  const/16 v1, 111
+    16  if-eq v10, v1, +055h
+    17  const/16 v0, 118
+    18  if-eq v10, v0, +04ah
+    19  const/16 v0, 1000
+    20  if-eq v10, v0, +004h
+    21  goto/16 +0c9h
+    22  iget-wide v1, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mDuring J
+    23  const-wide/16 v3, 0
+    24  cmp-long v10, v1, v3
+    25  if-nez v10, +00bh
+    26  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressBar Lcom/miot/service/common/widget/PieProgressBar;
+    27  iget v0, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mEndPercent I
+    28  int-to-float v0, v0
+    29  invoke-virtual v10, v0, Lcom/miot/service/common/widget/PieProgressBar;->setPercent(F)V
+    30  return-void 
+    31  iget v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartPercent I
+    32  int-to-long v1, v10
+    33  iget v3, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mEndPercent I
+    34  sub-int/2addr v3, v10
+    35  int-to-long v3, v3
+    36  invoke-static Ljava/lang/System;->currentTimeMillis()J
+    37  move-result-wide v5
+    38  iget-wide v7, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartTime J
+    39  sub-long/2addr v5, v7
+    40  mul-long v3, v3, v5
+    41  iget-wide v5, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mDuring J
+    42  div-long/2addr v3, v5
+    43  add-long/2addr v1, v3
+    44  long-to-int v10, v1
+    45  iget v1, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mEndPercent I
+    46  if-lt v10, v1, +009h
+    47  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressBar Lcom/miot/service/common/widget/PieProgressBar;
+    48  int-to-float v1, v1
+    49  invoke-virtual v10, v1, Lcom/miot/service/common/widget/PieProgressBar;->setPercent(F)V
+    50  goto +7h
+    51  iget-object v1, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressBar Lcom/miot/service/common/widget/PieProgressBar;
+    52  int-to-float v10, v10
+    53  invoke-virtual v1, v10, Lcom/miot/service/common/widget/PieProgressBar;->setPercent(F)V
+    54  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    55  move-result-object v10
+    56  const-wide/16 v1, 100
+    57  invoke-virtual v10, v0, v1, v2, Landroid/os/Handler;->sendEmptyMessageDelayed(I J)Z
+    58  goto/16 +087h
+    59  sget-object v10, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_SUCCESS Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    60  invoke-virtual v9, v10, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->finishCurrentStep(Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;)V
+    61  goto/16 +080h
+    62  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    63  invoke-interface v10, Ljava/util/Collection;->isEmpty()Z
+    64  move-result v10
+    65  if-nez v10, +015h
+    66  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    67  invoke-interface v10, Ljava/util/Queue;->poll()Ljava/lang/Object;
+    68  move-result-object v10
+    69  check-cast v10, Ljava/lang/Integer;
+    70  invoke-virtual v10, Ljava/lang/Integer;->intValue()I
+    71  move-result v10
+    72  iput v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mCurStepStartTime I
+    73  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    74  invoke-interface v10, Ljava/util/Queue;->poll()Ljava/lang/Object;
+    75  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    76  invoke-interface v10, Ljava/util/Collection;->size()I
+    77  move-result v10
+    78  if-nez v10, +007h
+    79  iget-boolean v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mDownloadAfterConfig Z
+    80  if-eqz v10, +003h
+    81  goto -2eh
+    82  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    83  invoke-interface v10, Ljava/util/Collection;->size()I
+    84  move-result v10
+    85  if-nez v10, +003h
+    86  goto -37h
+    87  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressBar Lcom/miot/service/common/widget/PieProgressBar;
+    88  invoke-virtual v10, Lcom/miot/service/common/widget/PieProgressBar;->getPercent()F
+    89  move-result v10
+    90  float-to-int v10, v10
+    91  iget-object v1, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    92  invoke-interface v1, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    93  move-result-object v1
+    94  check-cast v1, Ljava/lang/Integer;
+    95  invoke-virtual v1, Ljava/lang/Integer;->intValue()I
+    96  move-result v1
+    97  iget-object v2, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    98  invoke-interface v2, Ljava/util/Queue;->peek()Ljava/lang/Object;
+    99  move-result-object v2
+   100  check-cast v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+   101  iget-wide v2, v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+   102  invoke-direct v9, v10, v1, v2, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->startAnimation(I I J)V
+   103  invoke-virtual v9, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+   104  move-result-object v10
+   105  iget-object v1, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+   106  invoke-interface v1, Ljava/util/Queue;->peek()Ljava/lang/Object;
+   107  move-result-object v1
+   108  check-cast v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+   109  iget-wide v1, v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+   110  invoke-virtual v10, v0, v1, v2, Landroid/os/Handler;->sendEmptyMessageDelayed(I J)Z
+   111  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mMainTitle Landroid/widget/TextView;
+   112  invoke-virtual v9, v10, Lcom/miot/service/connection/wifi/step/ConfigStep;->setMainTitle(Landroid/widget/TextView;)V
+   113  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mMainSubTitle Landroid/widget/TextView;
+   114  invoke-virtual v9, v10, Lcom/miot/service/connection/wifi/step/ConfigStep;->setSubMainTitle(Landroid/widget/TextView;)V
+   115  goto +12h
+   116  iget-object v10, v9, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+   117  invoke-interface v10, Ljava/util/Queue;->element()Ljava/lang/Object;
+   118  move-result-object v10
+   119  check-cast v10, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+   120  iget v10, v10, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->index I
+   121  invoke-virtual v9, v10, Lcom/miot/service/connection/wifi/step/ConfigStep;->onStageTimeOut(I)Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+   122  move-result-object v10
+   123  invoke-virtual v9, v10, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->pauseCurrentStep(Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;)V
+   124  return-void 
+
+--- initView  (30 instr)
+     0  sget v0, Lcom/miot/service/R$id;->base_ui_progress I
+     1  invoke-virtual v2, v0, Landroid/view/View;->findViewById(I)Landroid/view/View;
+     2  move-result-object v0
+     3  iput-object v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressContainer Landroid/view/View;
+     4  sget v0, Lcom/miot/service/R$id;->base_ui_progress_bar I
+     5  invoke-virtual v2, v0, Landroid/view/View;->findViewById(I)Landroid/view/View;
+     6  move-result-object v0
+     7  check-cast v0, Lcom/miot/service/common/widget/PieProgressBar;
+     8  iput-object v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressBar Lcom/miot/service/common/widget/PieProgressBar;
+     9  sget v0, Lcom/miot/service/R$id;->base_ui_progress_bar_text I
+    10  invoke-virtual v2, v0, Landroid/view/View;->findViewById(I)Landroid/view/View;
+    11  move-result-object v0
+    12  check-cast v0, Landroid/widget/TextView;
+    13  iput-object v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->mBarText Landroid/widget/TextView;
+    14  sget v0, Lcom/miot/service/R$id;->base_ui_progress_bar_title I
+    15  invoke-virtual v2, v0, Landroid/view/View;->findViewById(I)Landroid/view/View;
+    16  move-result-object v0
+    17  check-cast v0, Landroid/widget/TextView;
+    18  iput-object v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->mMainTitle Landroid/widget/TextView;
+    19  sget v0, Lcom/miot/service/R$id;->smart_config_common_main_sub_title I
+    20  invoke-virtual v2, v0, Landroid/view/View;->findViewById(I)Landroid/view/View;
+    21  move-result-object v0
+    22  check-cast v0, Landroid/widget/TextView;
+    23  iput-object v0, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->mMainSubTitle Landroid/widget/TextView;
+    24  sget v0, Lcom/miot/service/R$id;->next_btn I
+    25  invoke-virtual v2, v0, Landroid/view/View;->findViewById(I)Landroid/view/View;
+    26  move-result-object v2
+    27  check-cast v2, Landroid/widget/Button;
+    28  iput-object v2, v1, Lcom/miot/service/connection/wifi/step/ConfigStep;->mNextButton Landroid/widget/Button;
+    29  return-void 
+
+--- isDeviceApConnected  (33 instr)
+     0  iget-object v0, v4, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+     1  const/4 v1, 0
+     2  if-nez v0, +003h
+     3  return v1
+     4  invoke-virtual v0, Landroid/net/wifi/WifiManager;->getConnectionInfo()Landroid/net/wifi/WifiInfo;
+     5  move-result-object v0
+     6  if-eqz v0, +031h
+     7  invoke-virtual v0, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+     8  move-result-object v2
+     9  invoke-static v2, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    10  move-result v2
+    11  if-nez v2, +027h
+    12  invoke-virtual v0, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    13  move-result-object v2
+    14  const-string v3, "<unknown ssid>"
+    15  invoke-virtual v2, v3, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    16  move-result v2
+    17  if-eqz v2, +003h
+    18  goto +19h
+    19  invoke-virtual v0, Landroid/net/wifi/WifiInfo;->getSupplicantState()Landroid/net/wifi/SupplicantState;
+    20  move-result-object v2
+    21  sget-object v3, Landroid/net/wifi/SupplicantState;->COMPLETED Landroid/net/wifi/SupplicantState;
+    22  if-ne v2, v3, +012h
+    23  if-eqz v5, +010h
+    24  invoke-virtual v0, Landroid/net/wifi/WifiInfo;->getSSID()Ljava/lang/String;
+    25  move-result-object v0
+    26  iget-object v5, v5, Landroid/net/wifi/ScanResult;->SSID Ljava/lang/String;
+    27  invoke-static v0, v5, Lcom/miot/service/connection/wifi/ConnectionUtils;->isEqualWifi(Ljava/lang/String; Ljava/lang/String;)Z
+    28  move-result v5
+    29  if-eqz v5, +004h
+    30  const/4 v5, 1
+    31  return v5
+    32  return v1
+
+--- onCreateStep  (61 instr)
+     0  sget v0, Lcom/miot/service/R$layout;->smart_config_start_config_ui I
+     1  invoke-virtual v7, v8, v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->setContentView(Landroid/content/Context; I)V
+     2  iget-object v8, v7, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+     3  const-string v0, "wifi"
+     4  invoke-virtual v8, v0, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+     5  move-result-object v8
+     6  check-cast v8, Landroid/net/wifi/WifiManager;
+     7  iput-object v8, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mWifiManager Landroid/net/wifi/WifiManager;
+     8  iget-object v8, v7, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mContext Landroid/content/Context;
+     9  const-string v0, "connectivity"
+    10  invoke-virtual v8, v0, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+    11  move-result-object v8
+    12  check-cast v8, Landroid/net/ConnectivityManager;
+    13  iput-object v8, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    14  invoke-virtual v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->getAllConfigStages()Ljava/util/ArrayList;
+    15  move-result-object v8
+    16  iput-object v8, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+    17  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+    18  invoke-interface v0, v8, Ljava/util/Collection;->addAll(Ljava/util/Collection;)Z
+    19  iget-object v8, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+    20  invoke-interface v8, Ljava/util/List;->iterator()Ljava/util/Iterator;
+    21  move-result-object v8
+    22  invoke-interface v8, Ljava/util/Iterator;->hasNext()Z
+    23  move-result v0
+    24  if-eqz v0, +010h
+    25  invoke-interface v8, Ljava/util/Iterator;->next()Ljava/lang/Object;
+    26  move-result-object v0
+    27  check-cast v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    28  iget-wide v1, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+    29  iget-wide v3, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    30  add-long/2addr v1, v3
+    31  iput-wide v1, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+    32  goto -13h
+    33  iget-object v8, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+    34  invoke-interface v8, Ljava/util/List;->iterator()Ljava/util/Iterator;
+    35  move-result-object v8
+    36  const/4 v0, 0
+    37  const/4 v1, 0
+    38  invoke-interface v8, Ljava/util/Iterator;->hasNext()Z
+    39  move-result v2
+    40  if-eqz v2, +01eh
+    41  invoke-interface v8, Ljava/util/Iterator;->next()Ljava/lang/Object;
+    42  move-result-object v2
+    43  check-cast v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    44  int-to-long v3, v1
+    45  iget-wide v1, v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    46  add-long/2addr v3, v1
+    47  long-to-int v1, v3
+    48  iget-object v2, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    49  mul-int/lit8 v3, v1, 100
+    50  int-to-long v3, v3
+    51  iget-wide v5, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+    52  div-long/2addr v3, v5
+    53  long-to-int v4, v3
+    54  invoke-static v4, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+    55  move-result-object v3
+    56  invoke-interface v2, v3, Ljava/util/Queue;->add(Ljava/lang/Object;)Z
+    57  goto -21h
+    58  iput v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mCurStepStartTime I
+    59  invoke-direct v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->startConfig()V
+    60  return-void 
+
+--- onCurrentIndexSuccess  (37 instr)
+     0  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+     1  invoke-interface v4, Ljava/util/Collection;->size()I
+     2  move-result v4
+     3  if-nez v4, +008h
+     4  sget-object v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;->STEP_SUCCESS Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+     5  invoke-virtual v3, v4, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->finishCurrentStep(Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;)V
+     6  return-void 
+     7  iget-object v4, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+     8  invoke-interface v4, Ljava/util/Queue;->element()Ljava/lang/Object;
+     9  move-result-object v4
+    10  check-cast v4, Ljava/lang/Integer;
+    11  invoke-virtual v4, Ljava/lang/Integer;->intValue()I
+    12  move-result v4
+    13  iget-object v0, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mProgressBar Lcom/miot/service/common/widget/PieProgressBar;
+    14  invoke-virtual v0, Lcom/miot/service/common/widget/PieProgressBar;->getPercent()F
+    15  move-result v0
+    16  float-to-int v0, v0
+    17  invoke-static Ljava/lang/System;->currentTimeMillis()J
+    18  move-result-wide v1
+    19  iput-wide v1, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartTime J
+    20  iput v0, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mStartPercent I
+    21  iput v4, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mEndPercent I
+    22  const-wide/16 v0, 1000
+    23  iput-wide v0, v3, Lcom/miot/service/connection/wifi/step/ConfigStep;->mDuring J
+    24  invoke-virtual v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    25  move-result-object v4
+    26  const/16 v2, 1000
+    27  invoke-virtual v4, v2, Landroid/os/Handler;->sendEmptyMessage(I)Z
+    28  invoke-virtual v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    29  move-result-object v4
+    30  const/16 v2, 111
+    31  invoke-virtual v4, v2, v0, v1, Landroid/os/Handler;->sendEmptyMessageDelayed(I J)Z
+    32  invoke-virtual v3, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    33  move-result-object v4
+    34  const/16 v0, 110
+    35  invoke-virtual v4, v0, Landroid/os/Handler;->removeMessages(I)V
+    36  return-void 
+
+--- onFinishStep  (41 instr)
+     0  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+     1  const/4 v1, 0
+     2  if-eqz v0, +020h
+     3  sget v2, Landroid/os/Build$VERSION;->SDK_INT I
+     4  const/16 v3, 29
+     5  if-lt v2, v3, +013h
+     6  iget-object v4, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+     7  if-eqz v4, +00fh
+     8  iget-object v4, v4, Lcom/miot/service/connection/wifi/QConnectCallback;->callback Landroid/net/ConnectivityManager$NetworkCallback;
+     9  if-eqz v4, +00bh
+    10  invoke-static v0, v4, Lcom/miot/service/connection/wifi/j;->a(Landroid/net/ConnectivityManager; Landroid/net/ConnectivityManager$NetworkCallback;)V
+    11  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    12  iput-object v1, v0, Lcom/miot/service/connection/wifi/QConnectCallback;->callback Landroid/net/ConnectivityManager$NetworkCallback;
+    13  iput-object v1, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mApNetworkCallback Lcom/miot/service/connection/wifi/QConnectCallback;
+    14  if-lt v2, v3, +007h
+    15  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConnectivityManager Landroid/net/ConnectivityManager;
+    16  invoke-static v0, v1, Lcom/miot/service/connection/wifi/k;->a(Landroid/net/ConnectivityManager; Landroid/net/Network;)Z
+    17  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    18  move-result-object v0
+    19  const/16 v2, 110
+    20  invoke-virtual v0, v2, Landroid/os/Handler;->removeMessages(I)V
+    21  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    22  move-result-object v0
+    23  const/16 v2, 111
+    24  invoke-virtual v0, v2, Landroid/os/Handler;->removeMessages(I)V
+    25  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    26  move-result-object v0
+    27  const/16 v2, 118
+    28  invoke-virtual v0, v2, Landroid/os/Handler;->removeMessages(I)V
+    29  invoke-virtual v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    30  move-result-object v0
+    31  const/16 v2, 1000
+    32  invoke-virtual v0, v2, Landroid/os/Handler;->removeMessages(I)V
+    33  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mWorkHandler Landroid/os/Handler;
+    34  if-eqz v0, +00dh
+    35  iget-object v0, v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mWorkHandlerThread Landroid/os/HandlerThread;
+    36  if-eqz v0, +009h
+    37  invoke-virtual v0, Landroid/os/HandlerThread;->quit()Z
+    38  iput-object v1, v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mWorkHandlerThread Landroid/os/HandlerThread;
+    39  iput-object v1, v5, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->mWorkHandler Landroid/os/Handler;
+    40  return-void 
+
+--- onPauseStep  (17 instr)
+     0  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     1  move-result-object v0
+     2  const/16 v1, 110
+     3  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+     4  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     5  move-result-object v0
+     6  const/16 v1, 111
+     7  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+     8  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     9  move-result-object v0
+    10  const/16 v1, 118
+    11  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+    12  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+    13  move-result-object v0
+    14  const/16 v1, 1000
+    15  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+    16  return-void 
+
+--- onResumeStep  (52 instr)
+     0  invoke-virtual v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->getAllConfigStages()Ljava/util/ArrayList;
+     1  move-result-object v0
+     2  iput-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+     3  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+     4  invoke-interface v0, Ljava/util/Collection;->clear()V
+     5  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+     6  iget-object v1, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+     7  invoke-interface v0, v1, Ljava/util/Collection;->addAll(Ljava/util/Collection;)Z
+     8  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+     9  invoke-interface v0, Ljava/util/Collection;->clear()V
+    10  const-wide/16 v0, 0
+    11  iput-wide v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+    12  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+    13  invoke-interface v0, Ljava/util/List;->iterator()Ljava/util/Iterator;
+    14  move-result-object v0
+    15  invoke-interface v0, Ljava/util/Iterator;->hasNext()Z
+    16  move-result v1
+    17  if-eqz v1, +010h
+    18  invoke-interface v0, Ljava/util/Iterator;->next()Ljava/lang/Object;
+    19  move-result-object v1
+    20  check-cast v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    21  iget-wide v2, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+    22  iget-wide v4, v1, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    23  add-long/2addr v2, v4
+    24  iput-wide v2, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+    25  goto -13h
+    26  iget-object v0, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mConfigTimeList Ljava/util/List;
+    27  invoke-interface v0, Ljava/util/List;->iterator()Ljava/util/Iterator;
+    28  move-result-object v0
+    29  const/4 v1, 0
+    30  invoke-interface v0, Ljava/util/Iterator;->hasNext()Z
+    31  move-result v2
+    32  if-eqz v2, +01eh
+    33  invoke-interface v0, Ljava/util/Iterator;->next()Ljava/lang/Object;
+    34  move-result-object v2
+    35  check-cast v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+    36  int-to-long v3, v1
+    37  iget-wide v1, v2, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->time J
+    38  add-long/2addr v3, v1
+    39  long-to-int v1, v3
+    40  iget-object v2, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftPercentList Ljava/util/Queue;
+    41  mul-int/lit8 v3, v1, 100
+    42  int-to-long v3, v3
+    43  iget-wide v5, v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->mAnimTotalTime J
+    44  div-long/2addr v3, v5
+    45  long-to-int v4, v3
+    46  invoke-static v4, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+    47  move-result-object v3
+    48  invoke-interface v2, v3, Ljava/util/Queue;->add(Ljava/lang/Object;)Z
+    49  goto -21h
+    50  invoke-direct v7, Lcom/miot/service/connection/wifi/step/ConfigStep;->startConfig()V
+    51  return-void 
+
+--- onStageTimeOut  (0 instr)
+
+--- setMainTitle  (3 instr)
+     0  sget v0, Lcom/miot/service/R$string;->smart_config_device_connecting I
+     1  invoke-virtual v2, v0, Landroid/widget/TextView;->setText(I)V
+     2  return-void 
+
+--- setSubMainTitle  (3 instr)
+     0  sget v0, Lcom/miot/service/R$string;->smart_config_connecting_sub_title I
+     1  invoke-virtual v2, v0, Landroid/widget/TextView;->setText(I)V
+     2  return-void 
+
+--- startConnection  (1 instr)
+     0  return-void 
+
+--- triggerTimeoutNow  (13 instr)
+     0  invoke-virtual v2, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->getHandler()Landroid/os/Handler;
+     1  move-result-object v0
+     2  const/16 v1, 110
+     3  invoke-virtual v0, v1, Landroid/os/Handler;->removeMessages(I)V
+     4  iget-object v0, v2, Lcom/miot/service/connection/wifi/step/ConfigStep;->mLeftConfigStepList Ljava/util/Queue;
+     5  invoke-interface v0, Ljava/util/Queue;->element()Ljava/lang/Object;
+     6  move-result-object v0
+     7  check-cast v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;
+     8  iget v0, v0, Lcom/miot/service/connection/wifi/step/ConfigStep$ConfigTime;->index I
+     9  invoke-virtual v2, v0, Lcom/miot/service/connection/wifi/step/ConfigStep;->onStageTimeOut(I)Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;
+    10  move-result-object v0
+    11  invoke-virtual v2, v0, Lcom/miot/service/connection/wifi/step/SmartConfigStep;->pauseCurrentStep(Lcom/miot/service/connection/wifi/step/SmartConfigStep$Step;)V
+    12  return-void 
+
+# apk/Yeelight_3.5.4_35402.apk: 3 Klassen, 6.3s

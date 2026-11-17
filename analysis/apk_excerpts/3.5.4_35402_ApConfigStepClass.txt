@@ -1,0 +1,260 @@
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$10;
+
+--- <clinit>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$2;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- run  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$3$1;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- run  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$3$2;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- run  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$4;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- run  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$5$1;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- run  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$5$2;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- run  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$6;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onClick  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- run  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$9;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onClick  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$1;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onDeviceConnectionBind  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onDeviceConnectionFailure  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onDeviceConnectionSuccess  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$3;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onFailure  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onSuccess  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$5;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onAvailable  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onLost  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onUnavailable  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$7$1$1;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onResponse  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$7;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onResponse  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep$8;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onResponse  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+==============================================================================
+### [classes.dex] Lcom/miot/service/connection/wifi/step/ApConfigStep;
+
+--- <init>  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$000  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$002  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$100  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$208  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$300  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$400  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$402  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$500  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$502  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- access$602  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- getBindkey  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- getAllConfigStages  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- getCurrentStageIndex  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- getGatewayAddr  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- getStep  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- handleMessage  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- long2Ip  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onApConnected  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onBackPressed  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onDeviceConnSuccess  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onFinishStep  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onStageTimeOut  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- onStopConnection  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- parseRpcResponse  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- setMainTitle  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- setMiioRouter  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- setSubMainTitle  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- startConnectToDeviceAp  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- startConnection  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- startConnectionAsso  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- startSearchNewDevice  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+--- stopConnection  (-1 instr)
+    !! 'DalvikCode' object has no attribute 'get_instructions'
+
+# apk/Yeelight_3.5.4_35402.apk: 17 Klassen, 5.9s

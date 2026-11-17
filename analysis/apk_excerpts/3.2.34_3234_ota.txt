@@ -1,0 +1,5 @@
+# apk/Yeelight_3.2.34_3234.apk  dex=['classes.dex', 'classes2.dex']  scan=11.4s
+==============================================================================
+### Nadel 'latest_version': 2 Methoden
+    [classes.dex] Lcom/miot/service/bluetooth/RestAPIImpl;->getBluetoothFirmwareUpdateInfo  (67 instr)
+    [classes2.dex] Lcom/yeelight/yeelib/d/q$2;->a  (69 instr)
