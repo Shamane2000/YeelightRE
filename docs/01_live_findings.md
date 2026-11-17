@@ -25,3 +25,11 @@
   - `get_prop ["lan_ctrl"]` readback returned `{"id": 20, "result": ["1"]}`.
   - `miIO.config_router` (`uid: 0`, `tz: Europe/Berlin`) returned `{"id": 21, "result": ["ok"]}`.
   - Bulb joined `HomeLan001` at `192.168.1.115` with **TCP `55443` and SSDP `1982` immediately open** (`{"id":1,"result":["on","100","3500","2"]}`).
+
+## Second Model Verified: Yeelight Color4 / 1S (, fw_ver 39)
+- **Setup AP:**  (, AP gateway , ).
+- **Behavior:**
+  -  -> 
+  -  -> 
+  -  drops the AP immediately without sending a UDP ACK (raises ), then joins  at  with **TCP  and SSDP  immediately open**.
+  - Added  (, area ).

@@ -149,13 +149,16 @@ def main() -> int:
         except Exception as exc:
             print("get_prop err:", exc)
 
-        res_cfg = ys.miio_send(gw, token, "miIO.config_router", {
-            "ssid": home_ssid,
-            "passwd": home_pw,
-            "uid": 0,
-            "tz": "Europe/Berlin",
-        }, req_id=21)
-        print("miIO.config_router:", res_cfg)
+        try:
+            res_cfg = ys.miio_send(gw, token, "miIO.config_router", {
+                "ssid": home_ssid,
+                "passwd": home_pw,
+                "uid": 0,
+                "tz": "Europe/Berlin",
+            }, req_id=21, timeout=3.0)
+            print("miIO.config_router:", res_cfg)
+        except (TimeoutError, OSError) as exc:
+            print(f"miIO.config_router note: AP dropped immediately on switch ({exc}) - checking LAN...")
     finally:
         run(["sudo", "-n", "nmcli", "con", "down", con_name], check=False)
         run(["sudo", "-n", "nmcli", "con", "delete", con_name], check=False)
