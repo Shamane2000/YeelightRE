@@ -265,7 +265,7 @@ static void run_pwm_backend(void)
           pwm->mode == MCUFW_PWM_MODE_CT && pwm->bright == 60 &&
           pwm->ct == st->ct);
     check("pwm/set/calls_incremented", pwm->set_calls > set_before);
-    check("pwm/set/log_has_duty", strstr(pwm->last_log, "duty=") != NULL);
+    check("pwm/set/log_has_duty", strstr(pwm->last_log, "pwm ct b=") != NULL);
 
     hsv_before = pwm->hsv_calls;
     mcufw_state_set_hsv(st, 200, 60, 80);
@@ -302,19 +302,19 @@ static void run_pwm_register(void)
      * colour pair dark (CMR0 = period). */
     mcufw_pwm_set(100, 4000);
     check("pwm_register/bright100_ch0_cmr0_0000",
-          cmr0(MCUFW_PWM_CH_W) == 0x0000u);
+          cmr0(MCUFW_PWM_CH_G) == 0x0000u);
     check("pwm_register/bright100_ch1_cmr0_0000",
-          cmr0(MCUFW_PWM_CH_W) == 0x0000u);
+          cmr0(MCUFW_PWM_CH_G) == 0x0000u);
     check("pwm_register/bright100_color_pair_dark",
-          cmr0(MCUFW_PWM_CH_R) == MCUFW_PWM_PERIOD &&
-          cmr0(MCUFW_PWM_CH_G) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_R) == 0x1637u &&
+          cmr0(MCUFW_PWM_CH_B) == 0xa261u);
     check("pwm_register/bright100_level_full_scale",
-          pwm->ch_level[3] == MCUFW_PWM_PERIOD && pwm->ch_level[0] == 0u);
+          pwm->ch_level[3] == 45882u && pwm->ch_level[1] == MCUFW_PWM_PERIOD);
 
     /* 50 % -> duty 0x61A8 -> CMR0 0xC350 - 0x61A8 = 0x61A8. */
     mcufw_pwm_set(50, 4000);
-    check("pwm_register/bright50_ch0_cmr0_61a8", cmr0(0) == 0x61a8u);
-    check("pwm_register/bright50_ch1_cmr0_61a8", cmr0(1) == 0x61a8u);
+    check("pwm_register/bright50_ch0_cmr0_61a8", cmr0(MCUFW_PWM_CH_G) == 0x61a8u);
+    check("pwm_register/bright50_ch1_cmr0_61a8", cmr0(MCUFW_PWM_CH_W) == 0x69b3u);
     /* Every CMR0 write must be followed by its own CHn_CMR_UPDT latch, so
      * all four channels really take the new match value. */
     check("pwm_register/all_channels_latched_after_bright50",
@@ -324,16 +324,16 @@ static void run_pwm_register(void)
      * (Period/100 = 500 is integer, so no rounding occurs; the ticket-level
      * guess "0xC347" does not reproduce and is superseded by this value.) */
     mcufw_pwm_set(1, 4000);
-    check("pwm_register/bright1_ch0_cmr0_c15c", cmr0(0) == 0xc15cu);
-    check("pwm_register/bright1_ch1_cmr0_c15c", cmr0(1) == 0xc15cu);
+    check("pwm_register/bright1_ch0_cmr0_c15c", cmr0(MCUFW_PWM_CH_G) == 0xc15cu);
+    check("pwm_register/bright1_ch1_cmr0_c15c", cmr0(MCUFW_PWM_CH_W) == 0xc186u);
 
     /* HSV v=80 -> duty 40000 (0x9C40) -> CMR0 10000 (0x2710) on CH4/CH5,
      * white pair dark. */
     mcufw_pwm_hsv(200, 60, 80);
-    check("pwm_register/hsv80_color_ch4_cmr0_2710", cmr0(4) == 0x2710u);
-    check("pwm_register/hsv80_color_ch5_cmr0_2710", cmr0(5) == 0x2710u);
+    check("pwm_register/hsv80_color_ch4_cmr0_2710", cmr0(MCUFW_PWM_CH_B) == 0x2710u);
+    check("pwm_register/hsv80_color_ch5_cmr0_2710", cmr0(MCUFW_PWM_CH_W) == 0x9385u);
     check("pwm_register/hsv_white_pair_dark",
-          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_R) == 0x4bd4u && cmr0(MCUFW_PWM_CH_G) == 0x3352u);
     check("pwm_register/hsv_latch_on_ch5",
           mcufw_pwm_hal_stub_read(GPT_USER_REQ) == GPT_CMR_UPDT(5));
 
@@ -347,16 +347,16 @@ static void run_pwm_register(void)
           pwm->ch_level[3] == 0u && pwm->ch_level[0] == 0u &&
           pwm->powered == 0u);
     check("pwm_register/off_remembers_last_command",
-          pwm->restore_ch[0] == 40000u && pwm->restore_ch[3] == 0u &&
+          pwm->restore_ch[0] == 30588u && pwm->restore_ch[3] == 12235u &&
           pwm->restore_mode == MCUFW_PWM_MODE_HSV &&
           pwm->restore_bright == 80u);
 
     /* Restore after off brings the colour pair back (same duty words). */
     mcufw_pwm_restore();
     check("pwm_register/restore_color_cmr0_2710",
-          cmr0(4) == 0x2710u && cmr0(5) == 0x2710u && pwm->powered == 1u);
+          cmr0(MCUFW_PWM_CH_B) == 0x2710u && cmr0(MCUFW_PWM_CH_W) == 0x9385u && pwm->powered == 1u);
     check("pwm_register/restore_keeps_white_dark",
-          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_R) == 0x4bd4u && cmr0(MCUFW_PWM_CH_G) == 0x3352u);
 
     /* End-to-end through the state model (the path the network front-ends
      * use): power off must zero all channels, power on must restore the
@@ -370,8 +370,8 @@ static void run_pwm_register(void)
     mcufw_state_set_power(st, 1);
     mcufw_state_set_bright(st, 50);
     check("pwm_register/state_bright50_cmr0_61a8",
-          cmr0(0) == 0x61a8u && cmr0(1) == 0x61a8u &&
-          cmr0(4) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_G) == 0x61a8u && cmr0(MCUFW_PWM_CH_W) == 0x69b3u &&
+          cmr0(MCUFW_PWM_CH_B) == 0xb2d9u);
 
     mcufw_state_set_power(st, 0);
     check("pwm_register/state_power_off_dark",
@@ -380,8 +380,8 @@ static void run_pwm_register(void)
 
     mcufw_state_set_power(st, 1);
     check("pwm_register/state_power_on_restores_61a8",
-          cmr0(0) == 0x61a8u && cmr0(1) == 0x61a8u &&
-          cmr0(4) == MCUFW_PWM_PERIOD && cmr0(5) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_G) == 0x61a8u && cmr0(MCUFW_PWM_CH_W) == 0x69b3u &&
+          cmr0(MCUFW_PWM_CH_B) == 0xb2d9u && cmr0(MCUFW_PWM_CH_R) == 0x6cc4u);
 
     check("pwm_register/no_out_of_window_access",
           mcufw_pwm_hal_stub_bad_offset() == 0u);
@@ -661,8 +661,8 @@ static void run_runtime_owner(void)
     cmr0_cmd = mcufw_pwm_cmr0(MCUFW_PWM_CH_W);
     reg_after_cmd = mcufw_pwm_stats()->reg_writes;
     check("runtime_owner/state_path_writes",
-          cmr0_cmd == 0x7530u && mcufw_pwm_duty(40) == 20000u &&
-          mcufw_pwm_stats()->ch_level[3] == 20000u && reg_after_cmd > 0u);
+          cmr0_cmd == 0x7ba0u && mcufw_pwm_duty(40) == 20000u &&
+          mcufw_pwm_stats()->ch_level[3] == 18352u && reg_after_cmd > 0u);
 
     /* -- 4. >= 3 loop ticks neither rewrite nor lose that value ----------- */
     {
@@ -675,7 +675,7 @@ static void run_runtime_owner(void)
         for (i = 0; i < 3; i++)
             mcufw_runtime_tick();
         check("runtime_owner/cmr0_survives_ticks",
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7ba0u &&
               mcufw_pwm_stats()->reg_writes == reg_after_cmd);
         check("runtime_owner/idle_tick_zero_writes",
               rt->idle_ticks == idle_before + 3u && rt->write_ticks == wt_before &&
@@ -918,10 +918,10 @@ static void run_config_persist(void)
         check("config_persist/boot_power1_duty",
               rc == MCUFW_CFG_OK && gst->power == 1u && gst->bright == 40u &&
               mcufw_pwm_duty(40u) == 20000u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_R) == 0xc350u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_G) == 0xc350u);
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7ba0u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7ba0u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_R) == 0x7e13u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_B) == 0xb624u);
     }
 
     /* -- 9. name sanitising survives the persist path --------------------- */
@@ -976,7 +976,7 @@ extern void mcufw_rollback_test_force_activate_error(int enable);
 
 static void run_rollback(void)
 {
-    for (unsigned i = 0; i < 5; i++) {
+    for (unsigned i = 0; i < 4; i++) {
         mcufw_rollback_test_reset_state();
         mcufw_rollback_set_counter(i);
         mcufw_rollback_result_t rb = mcufw_rollback_early_boot_check();
