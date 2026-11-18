@@ -71,12 +71,12 @@ static void status_line(void)
 	str_put(dst, sizeof(g_rt.last_status), &pos, "mcufw loop ");
 	hex_put(dst, sizeof(g_rt.last_status), &pos, g_rt.ticks);
 	str_put(dst, sizeof(g_rt.last_status), &pos, " lamp ");
-	num_put(dst, sizeof(g_rt.last_status), &pos, (uint32_t)pwm->white_level);
+	num_put(dst, sizeof(g_rt.last_status), &pos, (uint32_t)pwm->ch_level[3]);
 	str_put(dst, sizeof(g_rt.last_status), &pos, " color ");
-	num_put(dst, sizeof(g_rt.last_status), &pos, (uint32_t)pwm->color_level);
+	num_put(dst, sizeof(g_rt.last_status), &pos, (uint32_t)pwm->ch_level[0]);
 	str_put(dst, sizeof(g_rt.last_status), &pos, " cmr0 ");
 	hex_put(dst, sizeof(g_rt.last_status), &pos,
-		mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0));
+		mcufw_pwm_cmr0(MCUFW_PWM_CH_W));
 	str_put(dst, sizeof(g_rt.last_status), &pos, " out ");
 	num_put(dst, sizeof(g_rt.last_status), &pos, (uint32_t)g_rt.last_out);
 	str_put(dst, sizeof(g_rt.last_status), &pos, " udp ");

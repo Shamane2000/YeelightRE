@@ -34,6 +34,7 @@
 #include "mcufw_runtime.h"
 #include "mcufw_config.h"
 #include "mcufw_config_hal.h"
+#include "mcufw_rollback.h"
 
 static unsigned total_pass;
 static unsigned total_fail;
@@ -301,14 +302,14 @@ static void run_pwm_register(void)
      * colour pair dark (CMR0 = period). */
     mcufw_pwm_set(100, 4000);
     check("pwm_register/bright100_ch0_cmr0_0000",
-          cmr0(MCUFW_PWM_CH_WHITE0) == 0x0000u);
+          cmr0(MCUFW_PWM_CH_W) == 0x0000u);
     check("pwm_register/bright100_ch1_cmr0_0000",
-          cmr0(MCUFW_PWM_CH_WHITE1) == 0x0000u);
+          cmr0(MCUFW_PWM_CH_W) == 0x0000u);
     check("pwm_register/bright100_color_pair_dark",
-          cmr0(MCUFW_PWM_CH_COLOR0) == MCUFW_PWM_PERIOD &&
-          cmr0(MCUFW_PWM_CH_COLOR1) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_R) == MCUFW_PWM_PERIOD &&
+          cmr0(MCUFW_PWM_CH_G) == MCUFW_PWM_PERIOD);
     check("pwm_register/bright100_level_full_scale",
-          pwm->white_level == MCUFW_PWM_PERIOD && pwm->color_level == 0u);
+          pwm->ch_level[3] == MCUFW_PWM_PERIOD && pwm->ch_level[0] == 0u);
 
     /* 50 % -> duty 0x61A8 -> CMR0 0xC350 - 0x61A8 = 0x61A8. */
     mcufw_pwm_set(50, 4000);
@@ -343,10 +344,10 @@ static void run_pwm_register(void)
           cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD &&
           cmr0(4) == MCUFW_PWM_PERIOD && cmr0(5) == MCUFW_PWM_PERIOD);
     check("pwm_register/off_levels_zero",
-          pwm->white_level == 0u && pwm->color_level == 0u &&
+          pwm->ch_level[3] == 0u && pwm->ch_level[0] == 0u &&
           pwm->powered == 0u);
     check("pwm_register/off_remembers_last_command",
-          pwm->restore_color == 40000u && pwm->restore_white == 0u &&
+          pwm->restore_ch[0] == 40000u && pwm->restore_ch[3] == 0u &&
           pwm->restore_mode == MCUFW_PWM_MODE_HSV &&
           pwm->restore_bright == 80u);
 
@@ -657,11 +658,11 @@ static void run_runtime_owner(void)
     /* -- 3. a state command lands in GPT0 CMR0 (bright 40 -> 0x7530) ------ */
     mcufw_state_set_power(st, 1);
     mcufw_state_set_bright(st, 40);
-    cmr0_cmd = mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0);
+    cmr0_cmd = mcufw_pwm_cmr0(MCUFW_PWM_CH_W);
     reg_after_cmd = mcufw_pwm_stats()->reg_writes;
     check("runtime_owner/state_path_writes",
           cmr0_cmd == 0x7530u && mcufw_pwm_duty(40) == 20000u &&
-          mcufw_pwm_stats()->white_level == 20000u && reg_after_cmd > 0u);
+          mcufw_pwm_stats()->ch_level[3] == 20000u && reg_after_cmd > 0u);
 
     /* -- 4. >= 3 loop ticks neither rewrite nor lose that value ----------- */
     {
@@ -674,7 +675,7 @@ static void run_runtime_owner(void)
         for (i = 0; i < 3; i++)
             mcufw_runtime_tick();
         check("runtime_owner/cmr0_survives_ticks",
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == 0x7530u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
               mcufw_pwm_stats()->reg_writes == reg_after_cmd);
         check("runtime_owner/idle_tick_zero_writes",
               rt->idle_ticks == idle_before + 3u && rt->write_ticks == wt_before &&
@@ -712,14 +713,14 @@ static void run_runtime_owner(void)
      *       a hostile/garbage datagram cannot touch GPT0. */
     {
         static const char req[] = "{\"id\":9,\"method\":\"set_ps\",\"params\":[\"off\"]}";
-        uint32_t cmr_before = mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0);
+        uint32_t cmr_before = mcufw_pwm_cmr0(MCUFW_PWM_CH_W);
 
         mcufw_net_host_push_udp((const uint8_t *)req, sizeof(req) - 1u);
         mcufw_runtime_tick();
         check("runtime_owner/udp_read_rejected",
               net->udp_datagrams == 1u && net->udp_dropped == 1u &&
               st->power == 1 &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == cmr_before);
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == cmr_before);
     }
 
     /* -- 7. TCP 55443 request through the loop answers with the state ----- */
@@ -863,10 +864,10 @@ static void run_config_persist(void)
         mcufw_state_apply(gst);
         check("config_persist/boot_power0_dark",
               rc == MCUFW_CFG_OK && gst->power == 0u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == 0xc350u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE1) == 0xc350u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR0) == 0xc350u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR1) == 0xc350u);
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_R) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_G) == 0xc350u);
 
         /* -- 6. idle ticks after a load perform ZERO config writes -------- */
         mcufw_net_host_reset();
@@ -917,10 +918,10 @@ static void run_config_persist(void)
         check("config_persist/boot_power1_duty",
               rc == MCUFW_CFG_OK && gst->power == 1u && gst->bright == 40u &&
               mcufw_pwm_duty(40u) == 20000u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == 0x7530u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE1) == 0x7530u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR0) == 0xc350u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR1) == 0xc350u);
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_R) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_G) == 0xc350u);
     }
 
     /* -- 9. name sanitising survives the persist path --------------------- */
@@ -965,6 +966,84 @@ static void run_config_persist(void)
            cfg->foreign_fields, cfg->logs, mcufw_config_hal_stub_writes());
 }
 
+/* ---- Phase 4b.1: Rollback early-boot check ----------------------------- */
+extern void mcufw_rollback_test_reset_state(void);
+extern int  mcufw_rollback_test_was_passive_activated(void);
+extern int  mcufw_rollback_test_was_reset_called(void);
+extern void mcufw_rollback_test_force_read_error(int enable);
+extern void mcufw_rollback_test_force_write_error(int enable);
+extern void mcufw_rollback_test_force_activate_error(int enable);
+
+static void run_rollback(void)
+{
+    for (unsigned i = 0; i < 5; i++) {
+        mcufw_rollback_test_reset_state();
+        mcufw_rollback_set_counter(i);
+        mcufw_rollback_result_t rb = mcufw_rollback_early_boot_check();
+        char label[64];
+        snprintf(label, sizeof(label), "rollback/boot_%u_ok", i);
+        check(label, rb == MCUFW_RB_OK && mcufw_rollback_read_counter() == i + 1);
+    }
+    mcufw_rollback_test_reset_state();
+    mcufw_rollback_set_counter(4);
+    mcufw_rollback_result_t rb = mcufw_rollback_early_boot_check();
+    check("rollback/threshold_swap", mcufw_rollback_test_was_passive_activated());
+    check("rollback/threshold_counter_reset", mcufw_rollback_read_counter() == 0);
+    mcufw_rollback_test_reset_state();
+    mcufw_rollback_set_counter(3);
+    mcufw_rollback_confirm_good();
+    check("rollback/confirm_good", mcufw_rollback_read_counter() == 0);
+    mcufw_rollback_test_reset_state();
+    mcufw_rollback_test_force_read_error(1);
+    rb = mcufw_rollback_early_boot_check();
+    check("rollback/read_error_fallback",
+          mcufw_rollback_test_was_passive_activated() || rb == MCUFW_RB_ERROR);
+    mcufw_rollback_test_force_read_error(0);
+    mcufw_rollback_test_reset_state();
+    mcufw_rollback_set_counter(4);
+    mcufw_rollback_test_force_write_error(1);
+    rb = mcufw_rollback_early_boot_check();
+    check("rollback/write_error_at_threshold", rb == MCUFW_RB_ERROR);
+    mcufw_rollback_test_force_write_error(0);
+}
+
+/* ---- Phase 4b.1: 4-channel RGBW PWM + GPIO44 -------------------------- */
+static void run_pwm_rgbw(void)
+{
+    mcufw_pwm_stats_reset();
+    mcufw_pwm_hal_stub_reset();
+    mcufw_pwm_init();
+    check("pwm_rgbw/init_gpio44_off", mcufw_pwm_hal_stub_gpio_get(44) == 0);
+    mcufw_pwm_set(50, 3500);
+    const mcufw_pwm_stats_t *st = mcufw_pwm_stats();
+    check("pwm_rgbw/ct_mode", st->mode == MCUFW_PWM_MODE_CT);
+    check("pwm_rgbw/ct_gpio44_on", mcufw_pwm_hal_stub_gpio_get(44) == 1);
+    check("pwm_rgbw/ct_4ch_nonzero",
+          st->ch_level[0] > 0 && st->ch_level[1] > 0 &&
+          st->ch_level[2] > 0 && st->ch_level[3] > 0);
+    mcufw_pwm_set(0, 3500);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/off_gpio44_low", mcufw_pwm_hal_stub_gpio_get(44) == 0);
+    check("pwm_rgbw/off_all_zero",
+          st->ch_level[0]==0 && st->ch_level[1]==0 &&
+          st->ch_level[2]==0 && st->ch_level[3]==0);
+    mcufw_pwm_hsv(120, 80, 75);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/hsv_mode", st->mode == MCUFW_PWM_MODE_HSV);
+    check("pwm_rgbw/hsv_gpio44_on", mcufw_pwm_hal_stub_gpio_get(44) == 1);
+    check("pwm_rgbw/hsv_green_dominant",
+          st->ch_level[1] > st->ch_level[0] &&
+          st->ch_level[1] > st->ch_level[2]);
+    mcufw_pwm_hsv(120, 80, 0);
+    check("pwm_rgbw/hsv_v0_gpio44_off", mcufw_pwm_hal_stub_gpio_get(44) == 0);
+    mcufw_pwm_restore();
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/restore_gpio44_on", mcufw_pwm_hal_stub_gpio_get(44) == 1);
+    check("pwm_rgbw/restore_powered", st->powered == 1);
+    printf("  pwm_rgbw: reg_writes=%u skipped=%u service_applied=%u\n",
+           st->reg_writes, st->skipped_identical, st->service_applied);
+}
+
 int main(void)
 {
     printf("=== mcufw phase 4 host test ===\n");
@@ -1005,6 +1084,10 @@ int main(void)
     printf("\n[persistent config / power-on]\n");
     run_config_persist();
 
+    printf("\n[Rollback early-boot]\n");
+    run_rollback();
+    printf("\n[PWM RGBW 4-ch + GPIO44]\n");
+    run_pwm_rgbw();
     printf("\n=== TOTAL: %u PASS, %u FAIL ===\n", total_pass, total_fail);
     return total_fail == 0 ? 0 : 1;
 }

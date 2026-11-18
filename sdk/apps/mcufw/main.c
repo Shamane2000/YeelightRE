@@ -26,6 +26,7 @@
 #include "mcufw_runtime.h"
 #include "mcufw_config.h"
 #include "mcufw_config_hal.h"
+#include "mcufw_rollback.h"
 
 #define MCUFW_VERSION "mcufw 0.6-phase3.6"
 
@@ -486,6 +487,17 @@ int main(void)
 {
 	uart0_init();
 
+	/* Phase 4b.1: Early-Boot A/B-Rollback-Check VOR jeglicher RTOS/WLAN/Config-Init. */
+	mcufw_rollback_result_t rb = mcufw_rollback_early_boot_check();
+	if (rb == MCUFW_RB_ROLLED_BACK) {
+		/* Sollte nie hier ankommen (reset ist noreturn), aber falls doch: */
+		uart_puts("ROLLBACK: passive slot activated, resetting...\r\n");
+		for (;;) ; /* Safety hang; HAL reset sollte bereits erfolgt sein. */
+	}
+	if (rb == MCUFW_RB_ERROR) {
+		uart_puts("ROLLBACK: backend error, continuing with caution");
+	}
+
 	uart_puts("\r\n");
 	uart_puts(MCUFW_VERSION);
 	uart_puts(" -- rtos+lwip+rpc+mqtt+cf+state, no assoc, no cloud\r\n");
@@ -564,8 +576,8 @@ int main(void)
 	mcufw_pwm_invalidate();
 	mcufw_state_apply(mcufw_state());
 	uart_puts("owner mcufw_pwm lamp ");
-	uart_put_dec(mcufw_pwm_stats()->white_level);
-	uart_put_dec(mcufw_pwm_stats()->color_level);
+	uart_put_dec(mcufw_pwm_stats()->ch_level[3]);
+	uart_put_dec(mcufw_pwm_stats()->ch_level[0]);
 	uart_puts(" cmr0 ");
 	uart_put_hex32(mcufw_pwm_cmr0(0));
 	uart_puts("\r\n");

@@ -1,11 +1,4 @@
-/* mcufw_pwm_hal_target.c -- GPT0 register seam, target backend (phase 3.7).
- *
- * Every lamp write in the firmware goes through mcufw_pwm_hal_write(); this is
- * the single place that touches the real peripheral window.  Using the same
- * offsets as the proven 3.3 driver (GPT0_BASE 0x46070000, channel block
- * 0x200 + ch*0x30, CMR0 +0x10, USER_REQ 0x0f0) means the host test and the
- * target execute identical arithmetic.
- */
+/* mcufw_pwm_hal_target.c -- GPT0 + GPIO seam, target backend (phase 4b.1). */
 #include "mcufw_regs.h"
 #include "mcufw_pwm_hal.h"
 
@@ -19,7 +12,16 @@ uint32_t mcufw_pwm_hal_read(uint32_t offset)
 	return REG32(GPT0_BASE + offset);
 }
 
-const char *mcufw_pwm_hal_name(void)
+const char *mcufw_pwm_hal_name(void) { return "gpt0-mmio"; }
+
+void mcufw_pwm_hal_gpio_set(uint8_t pin, uint8_t on)
 {
-	return "gpt0-mmio";
+	/* GPIO bank = pin >> 5, bit = 1 << (pin & 31).
+	 * GPSR = set, GPCR = clear. Base from mcufw_regs.h. */
+	uint32_t bank = (uint32_t)(pin >> 5);
+	uint32_t bit = 1u << (pin & 31u);
+	if (on)
+		REG32(GPIO_BASE + 0x00u + bank * 0x04u) = bit; /* GPSR */
+	else
+		REG32(GPIO_BASE + 0x08u + bank * 0x04u) = bit; /* GPCR */
 }

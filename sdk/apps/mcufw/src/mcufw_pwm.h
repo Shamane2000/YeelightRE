@@ -1,20 +1,16 @@
 /*
- * mcufw_pwm.h -- lamp PWM backend abstraction (phase 3.6, register path 3.7).
+ * mcufw_pwm.h -- color2 (YLDP06YL) 4-Kanal-RGBW-PWM + GPIO44 Enable (Phase 4b.1).
  *
- * The state model (mcufw_state.c) is hardware-agnostic; this is the seam to
- * the light.  Since phase 3.7 the backend does not only record what it was
- * asked to do -- it programs the GPT0 channels through mcufw_pwm_hal_*():
+ * Hardware-Fakten aus color2_142_0027.elf (Ghidra):
+ *   - GPT0 CH0 -> GPIO0, CH1 -> GPIO1, CH4 -> GPIO4, CH5 -> GPIO5
+ *   - Periode 50000 (0xC350), inverted: CMR0 = period - duty
+ *   - GPIO44 (0x2c) = active-high LED-Power-Enable (0=aus, 1=an)
  *
- *   white channels (CT / brightness)  -> CH0, CH1  (GPIO0/1, FSEL 1)
- *   colour channels (HSV value)       -> CH4, CH5  (GPIO4/5, FSEL 1)
+ * Kanal-Zuordnung (color2 RGBW):
+ *   CH0 = Rot, CH1 = Grün, CH4 = Blau, CH5 = Weiß
  *
- * Register semantics proven in phase 3.3 (mcufw_gpt.c): edge-aligned PWM,
- * inverted polarity, period 0xC350, so the programmed word is
- * CMR0 = period - level (level 0 = dark, level 0xC350 = full on).
- *
- * The HAL backend is chosen at link time (real MMIO on the target, word array
- * in the host test), therefore the very same arithmetic is asserted by the
- * host test and executed on the lamp.
+ * CT-Mixing: warmweiß/kaltweiß wird über RGB+Anteil W gemischt.
+ * set_rgb(h,s,v) steuert alle 4 Kanäle getrennt.
  */
 #ifndef MCUFW_PWM_H
 #define MCUFW_PWM_H
@@ -22,86 +18,54 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Same full-scale counter value as the reference app init table (0xC350). */
 #define MCUFW_PWM_PERIOD 0xc350u
 
 #define MCUFW_PWM_MODE_OFF 0u
 #define MCUFW_PWM_MODE_CT  2u
 #define MCUFW_PWM_MODE_HSV 3u
 
-/* GPT0 channel indices of the four lamp strings (phase 3.3 init table:
- * pins 0/1/4/5, channels 0/1/4/5, all GPT0, FSEL 1). */
-#define MCUFW_PWM_CH_WHITE0 0u
-#define MCUFW_PWM_CH_WHITE1 1u
-#define MCUFW_PWM_CH_COLOR0 4u
-#define MCUFW_PWM_CH_COLOR1 5u
+/* GPT0 channel indices for color2 RGBW strings. */
+#define MCUFW_PWM_CH_R 0u  /* GPIO0 */
+#define MCUFW_PWM_CH_G 1u  /* GPIO1 */
+#define MCUFW_PWM_CH_B 4u  /* GPIO4 */
+#define MCUFW_PWM_CH_W 5u  /* GPIO5 */
+
+/* GPIO44 = LED power enable pin. */
+#define MCUFW_PIN_LED_ENABLE 44u
 
 typedef struct {
-	uint32_t set_calls;   /* mcufw_pwm_set() invocations  */
-	uint32_t hsv_calls;   /* mcufw_pwm_hsv() invocations  */
-	uint8_t  mode;        /* last mode: 0 off, 2 ct, 3 hsv */
-	uint8_t  bright;      /* last brightness 0..100       */
-	uint16_t ct;          /* last colour temperature      */
-	uint16_t hue;         /* last hue 0..359              */
-	uint8_t  sat;         /* last saturation 0..100       */
-	uint8_t  val;         /* last HSV value / brightness  */
-	/* --- phase 3.7: what was actually programmed ----------------------- */
-	uint8_t  powered;     /* 1 = channels driven, 0 = all four dark */
-	uint16_t white_level; /* level on CH0/CH1, 0..MCUFW_PWM_PERIOD */
-	uint16_t color_level; /* level on CH4/CH5, 0..MCUFW_PWM_PERIOD */
-	/* Last non-dark command, kept across a power off so it can be restored. */
+	uint32_t set_calls;
+	uint32_t hsv_calls;
+	uint8_t  mode;        /* 0 off, 2 ct, 3 hsv */
+	uint8_t  bright;      /* 0..100 */
+	uint16_t ct;          /* colour temperature */
+	uint16_t hue;         /* 0..359 */
+	uint8_t  sat;         /* 0..100 */
+	uint8_t  val;         /* HSV value */
+	uint8_t  powered;     /* 1 = channels driven, 0 = dark */
+	uint16_t ch_level[4]; /* R/G/B/W levels 0..MCUFW_PWM_PERIOD */
+	uint8_t  led_enable;  /* GPIO44 state: 0=off, 1=on */
 	uint8_t  restore_mode;
 	uint8_t  restore_bright;
-	uint16_t restore_white;
-	uint16_t restore_color;
-	uint32_t reg_writes;  /* GPT0 register writes issued by this module */
-	/* --- phase 3.8: ownership / idle invariant -------------------------- */
-	uint8_t  dirty;               /* 1 = channels programmed since the last
-				       *     mcufw_pwm_service() call          */
-	uint32_t service_applied;     /* service calls that consumed dirty=1   */
-	uint32_t service_idle;        /* service calls with nothing to do      */
-	uint32_t skipped_identical;   /* commands that rewrote nothing         */
-	char     last_log[64]; /* human-readable last command */
+	uint16_t restore_ch[4];
+	uint32_t reg_writes;
+	uint8_t  dirty;
+	uint32_t service_applied;
+	uint32_t service_idle;
+	uint32_t skipped_identical;
+	char     last_log[64];
 } mcufw_pwm_stats_t;
 
-/* Reset the recorded backend state (does not touch the hardware). */
 void mcufw_pwm_init(void);
-
-/* White-channel command.  bright == 0 means "lamp off" (all channels dark). */
 void mcufw_pwm_set(uint8_t bright, uint16_t ct);
-
-/* Colour-channel command.  val == 0 behaves like "off". */
 void mcufw_pwm_hsv(uint16_t hue, uint8_t sat, uint8_t val);
-
-/* Re-program the last non-dark command after a power off.  No-op if the lamp
- * was never driven since mcufw_pwm_init(). */
 void mcufw_pwm_restore(void);
-
-/* Phase 3.8: called once per runtime tick by mcufw_runtime.c.  Consumes the
- * dirty flag and reports whether the state path had programmed the channels
- * since the previous call.  Performs ZERO register writes by design -- this
- * module stays the only writer, the loop only observes it.
- * Returns 1 = a state change was consumed, 0 = nothing to do. */
-int mcufw_pwm_service(void);
-
-/* Forget what was programmed (someone else touched the channels: boot ramp).
- * The next state command writes again instead of being skipped as identical. */
+int  mcufw_pwm_service(void);
 void mcufw_pwm_invalidate(void);
-
-/* Read back the CMR0 word of one channel through the same HAL seam the driver
- * writes through (host: stub window, target: real MMIO). */
 uint32_t mcufw_pwm_cmr0(uint8_t ch);
-
-/* Read-only view of what the backend was last asked to do. */
 const mcufw_pwm_stats_t *mcufw_pwm_stats(void);
-
 void mcufw_pwm_stats_reset(void);
-
-/* Duty word for a brightness percentage (0..MCUFW_PWM_PERIOD). */
 uint16_t mcufw_pwm_duty(uint8_t bright);
-
-/* Level last programmed per channel pair (0..MCUFW_PWM_PERIOD). */
-uint16_t mcufw_pwm_white_level(void);
-uint16_t mcufw_pwm_color_level(void);
+uint16_t mcufw_pwm_channel_level(uint8_t ch_idx); /* ch_idx 0..3 -> R/G/B/W */
 
 #endif /* MCUFW_PWM_H */

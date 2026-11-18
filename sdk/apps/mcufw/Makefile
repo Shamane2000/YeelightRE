@@ -74,6 +74,15 @@ else
 $(error MCUFW_CONFIG_BACKEND muss stub oder flash sein (aktuell: $(MCUFW_CONFIG_BACKEND)))
 endif
 
+# --- phase 4b.1: rollback backend ---------------------------------------
+MCUFW_ROLLBACK_BACKEND ?= stub
+ifeq ($(MCUFW_ROLLBACK_BACKEND),flash)
+ROLLBACK_HAL_OBJ := $(BUILD)/mcufw/mcufw_rollback_hal_target_flash.o
+else ifeq ($(MCUFW_ROLLBACK_BACKEND),stub)
+ROLLBACK_HAL_OBJ := $(BUILD)/mcufw/mcufw_rollback_hal_host.o
+else
+$(error MCUFW_ROLLBACK_BACKEND muss stub oder flash sein (aktuell: $(MCUFW_ROLLBACK_BACKEND)))
+endif
 
 # --- mcufw application objects -------------------------------------------
 MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
@@ -87,7 +96,8 @@ MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_pwm_hal_target.o \
               $(BUILD)/mcufw/mcufw_net.o $(BUILD)/mcufw/mcufw_net_lwip.o \
               $(BUILD)/mcufw/mcufw_runtime.o \
-              $(BUILD)/mcufw/mcufw_config.o $(CONFIG_HAL_OBJ)
+              $(BUILD)/mcufw/mcufw_config.o $(CONFIG_HAL_OBJ) \
+              $(BUILD)/mcufw/mcufw_rollback.o $(ROLLBACK_HAL_OBJ)
 
 # --- FreeRTOS objects ----------------------------------------------------
 FR_DIR := $(SDK_DIR)/sdk/external/freertos
@@ -352,6 +362,7 @@ HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
              $(SRC)/mcufw_net.c $(SRC)/mcufw_net_host.c \
              $(SRC)/mcufw_runtime.c \
              $(SRC)/mcufw_config.c $(SRC)/mcufw_config_hal_host.c \
+             $(SRC)/mcufw_rollback.c $(SRC)/mcufw_rollback_hal_host.c \
              $(ROOT)/host_test.c
 
 host-test:
