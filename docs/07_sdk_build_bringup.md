@@ -36,6 +36,15 @@ Frischer Arbeitsbaum (`make -C sdk clean`) plus die vier Schritte oben ist der
 komplette reproduzierbare Pfad. `sdk/vendor/` ist git-ignoriert; die
 Reproduzierbarkeit kommt aus `sdk/sdk.lock` + `bootstrap.sh`-Verifikation.
 
+Der **frische Clone** des Repos enthält kein `firmware/`-Baum (Vendor-Binaries
+werden nicht eingecheckt). `make -C sdk` baut und verifiziert dann nur die
+Format-/Slot-/Entry-Checks des Containers und meldet den übersprungenen
+Referenz-Cross-Check explizit mit `[SKIP]`; `verify-reference` und
+`verify-roundtrip` brechen in dem Fall mit einer klaren Fehlermeldung ab. Wer
+das Referenz-Image unter `firmware/color1_142_0061/` ablegt (Bezugsquelle
+siehe SSoT-Notiz `yeelight-custom-firmware-rebuild`), bekommt den vollen
+41-Check-Lauf gegen `color1_0061`.
+
 ## 3. Ergebnis: ELF-Layout
 
 ```

@@ -41,15 +41,26 @@ elf: check-env
 container: elf
 	@$(MAKE) --no-print-directory -C $(APP_DIR) container
 
+# The vendor reference image is deliberately not committed (vendor binary), so a
+# fresh clone has no firmware/ tree. In that case the cross-check against
+# color1_0061 is skipped with an explicit notice; the vendor-free format checks
+# still run. Supply the image (see docs/07) to get the full 41-check run.
 verify: container
-	@echo "== verify container against reference $REF_BIN"
+ifeq ($(wildcard $(REF_BIN)),)
+	@echo "== verify container (Referenz-Image fehlt -> Referenz-Cross-Check wird uebersprungen)"
+	@$(PYTHON) $(VERIFIER) --container $(CONTAINER) --app-slot-max 0x60000
+	@echo "   [SKIP] $(REF_BIN) nicht vorhanden -- Referenz-Cross-Check uebersprungen"
+else
+	@echo "== verify container against reference $(REF_BIN)"
 	@$(PYTHON) $(VERIFIER) \
 		--container $(CONTAINER) \
 		--reference $(REF_BIN) \
 		--app-slot-max 0x60000
+endif
 
 verify-reference:
-	@echo "== verify reference image $REF_BIN (self-check of the verifier)"
+	@test -f $(REF_BIN) || { echo "FEHLER: Referenz-Image $(REF_BIN) fehlt (nicht im Repo). Siehe docs/07 Abschnitt 1."; exit 1; }
+	@echo "== verify reference image $(REF_BIN) (self-check of the verifier)"
 	@$(PYTHON) $(VERIFIER) --container $(REF_BIN) --app-slot-max 0x60000
 
 # Proves the toolchain is faithful: repacking the reference ELF with the vendor
@@ -60,6 +71,7 @@ verify-reference:
 #   0x10-0x13  entry      (the reference ELF artefact has e_entry=0x100001, the
 #                          shipped container carries 0x1f0032d9 -- see docs/07)
 verify-roundtrip: check-env
+	@test -f $(REF_ELF) || { echo "FEHLER: Referenz-ELF $(REF_ELF) fehlt (nicht im Repo). Siehe docs/07 Abschnitt 1."; exit 1; }
 	@mkdir -p $(BUILD)
 	@cp $(REF_ELF) $(BUILD)/ref_roundtrip.elf
 	@cd $(BUILD) && $(AXF2FW) ref_roundtrip.elf ref_roundtrip.bin

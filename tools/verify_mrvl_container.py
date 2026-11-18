@@ -98,7 +98,10 @@ _CRC_TABLE = _build_table()
 
 
 def parse_container(path: str) -> dict:
-    data = open(path, "rb").read()  # noqa: SIM115 - short-lived, closed on exit
+    try:
+        data = open(path, "rb").read()  # noqa: SIM115 - short-lived, closed on exit
+    except FileNotFoundError:
+        raise SystemExit(f"FEHLER: Datei nicht gefunden: {path}")
     if len(data) < HDR_SIZE or data[:4] != MRVL_MAGIC:
         raise SystemExit(f"{path}: kein MRVL-Container (magic={data[:4]!r})")
     magic, magic2, timestamp, seg_cnt, entry = struct.unpack_from(HDR_FMT, data, 0)
