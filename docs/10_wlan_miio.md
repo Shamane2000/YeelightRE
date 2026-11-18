@@ -18,7 +18,7 @@ stehen in §6 und sind reproduzierbar.
 | `arm-none-eabi-nm -u mcufw.elf` | **0** undefinierte Symbole |
 | Host-Selftest (`make host-test`) | **13/13 PASS** |
 | ELF über 2 Clean-Builds | byte-identisch `1dac6aac…0a9e1b` |
-| Container | 197284 B, Load-Addr `0x00100000 / 0x1f0032d8 / 0x20000040` (= color1_0061) |
+| Container | 197252 B, Load-Addr `0x00100000 / 0x1f0032d8 / 0x20000040` (= color1_0061) |
 
 Der Container ist **nicht** byte-identisch zwischen Builds: `axf2firmware`
 schreibt `time(NULL)` in Offset `0x08` (schon in docs/07 belegt). Deterministisch
