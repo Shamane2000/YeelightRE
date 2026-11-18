@@ -1,6 +1,6 @@
 # Yeelight Custom Firmware Rebuild — Single Source of Truth
 
-> **Status:** Phase 3.6 abgeschlossen (2026-11-18)
+> **Status:** Phase 3.7 abgeschlossen (2026-11-18)
 > **Repo:** `Shamane2000/yeelight-re` · Branch `main`
 > **Build-Host:** devastator (`192.168.1.154`, `/home/jarvis/projects/yeelight-re`)
 
@@ -138,19 +138,95 @@ Zusätzliche nm-Guards im Verifier: `mcufw_state_set_power`, `mcufw_pwm_set`,
 `mcufw_pwm_hsv`.
 Commit: `6d5968c` (Code), dieser SSoT-Eintrag folgt als eigener `docs(phase3.6)`-Commit.
 
+### 4.8 Phase-3.7 — `mcufw_pwm` auf echte GPT0-Kanäle (Register-Seam, verifiziert 2026-11-18)
+
+**Register-Seam (ein benannter HAL-Baustein, zwei Link-Time-Backends).**
+`mcufw_pwm_hal_write()` / `_read()` / `_name()` sind die einzige Stelle, an der
+GPT0 angefasst wird; der Aufrufer enthält **kein** `#ifdef`:
+
+| Backend | Datei | Mechanik |
+|---|---|---|
+| Target | `src/mcufw_pwm_hal_target.c` | `REG32(GPT0_BASE + off)` (`GPT0_BASE` 0x46070000) |
+| Host | `src/mcufw_pwm_hal_host.c` | Wort-Array, 256 Words = 1 KiB (deckt 0x000..0x3FF, letzter Kanal CH5 endet 0x310) |
+
+Der Stub führt zusätzlich zwei Invarianten: `bad_offset` (Zugriff außerhalb des
+Fensters/unaligned) und Latch-Konsistenz (`latched_mask`/`latch_errors`).
+Das Firmware-Image enthält **kein** `mcufw_pwm_hal_stub_*`-Symbol (nm-Guard im
+Verifier) — der Stub kann nicht versehentlich mitgelinkt werden.
+`mcufw_gpt.c` (Phase 3.3) schreibt seit 3.7 ebenfalls über diesen Seam.
+
+**Kanal-Mapping + Register-Arithmetik** (aus 3.3 unverändert: edge-aligned PWM,
+invertierte Polarität, Periode `0xC350`, also `CMR0 = 0xC350 − level`):
+
+| Befehl | Level | CMR0 geschrieben | Kanäle |
+|---|---|---|---|
+| `mcufw_pwm_set(100, ct)` | 0xC350 | `0x0000` | CH0, CH1 (Weiß-Paar); CH4/CH5 dunkel (`0xC350`) |
+| `mcufw_pwm_set(50, ct)` | 0x61A8 | `0x61A8` | CH0, CH1 |
+| `mcufw_pwm_set(1, ct)` | 0x01F4 | `0xC15C` | CH0, CH1 |
+| `mcufw_pwm_hsv(h, s, 80)` | 0x9C40 | `0x2710` | CH4, CH5 (Farb-Paar); Weiß-Paar dunkel |
+| `mcufw_pwm_set(0, ct)` (off) | 0 | `0xC350` | alle vier Kanäle |
+
+**Rundung: keine.** `0xC350 / 100 = 500` ist ganzzahlig, deshalb landet jedes
+ganze Prozent exakt auf einem Count (1 % → 0x01F4, 50 % → 0x61A8). Der in der
+Ticket-Beschreibung vermutete Wert `0xC347` für 1 % reproduziert nicht und ist
+damit widerlegt (er entspräche ~0x0129 Counts) — der Test nagelt `0xC15C` fest.
+
+**Latch.** Auf jeden CMR0-Write folgt `USER_REQ |= CHn_CMR_UPDT(ch)`, der neue
+Match-Wert wird erst zur nächsten Zählerperiode wirksam (kein Tearing). Der
+Host-Test prüft das als Invariante über alle vier Kanäle (Maske `0x33`) statt
+nur „letzter Write".
+
+**Power-Restore.** `set_power(0)` fährt alle vier Kanäle auf Level 0
+(CMR0 = 0xC350) und merkt sich den letzten nicht-dunklen Befehl in
+`restore_mode/restore_bright/restore_white/restore_color`; `set_power(1)` ruft
+`mcufw_pwm_restore()` und stellt exakt dieselben Duty-Wörter wieder her
+(bright 50 % → 0x61A8, hsv v=80 → 0x2710).
+
+**Weiterhin Annahme, kein Beweis:** (a) die Aufteilung der vier Strings in
+Weiß-Paar CH0/CH1 und Farb-Paar CH4/CH5 — der 3.3-Treiber schreibt auf alle
+vier Kanäle denselben Level, die Paar-Zuordnung ist die 3.7-Hypothese und
+braucht Silizium-Bestätigung am Gerät (Board-Zugriff, spätere Phase);
+(b) keine per-Hue-Kanal-Mischtabelle im Referenz-Image — nur die HSV-V-
+Komponente treibt das Duty-Wort, `hue`/`sat` werden für die spätere
+Mischtabelle mitgeführt; (c) die echte GPT0-Taktfrequenz bleibt unbelegt
+(SDK-`GPT_Init()`-Konfiguration nicht in `.data`) — im Treiberkopf als `TODO`
+markiert, nicht als bewiesen dargestellt.
+
+**Host-Test:** neue Sektion `pwm_register` mit **27** Checks (CMR0-Werte je
+Befehl, Latch-Maske, Power-off + Restore, Ende-zu-Ende über
+`mcufw_state_set_power/set_bright`, Fenster- und Latch-Invariante).
+Gesamt **109 PASS, 0 FAIL** (vorher 82).
+
+**Vollverifikation:** `make -C sdk` → **41/41 PASS**, `nm -u mcufw.elf` → **0**,
+ELF-SHA256 `ffd06d7ee5799348221bdf18df521b5056be8881f61791ddef08c482078f320f`
+(2 Clean-Builds byte-identisch, mehrfach reproduziert). Der Container `mcufw_MRVL.bin` ist bewusst
+**nicht** byte-reproduzierbar: `axf2firmware` schreibt `time(NULL)`, es
+differiert genau 1 Byte (Offset 9); im Verifier als erwartete Abweichung
+dokumentiert. Flash-Budget 256740 B ≤ 384 KB (Slot-Limit).
+Neue nm-Guards: `mcufw_pwm_hal_write` muss vorhanden sein, `mcufw_pwm_hal_stub_*`
+darf nicht im Image sein.
+Der Firmware-Version-String bleibt `0.6-phase3.6`: die nach außen sichtbare
+Config-Oberfläche (miIO/LAN-RPC) ist unverändert; der Bump gehört zur ersten
+flash-fähigen Phase. Commit: `40a8727` (Code).
+
 ## §5 Offene Punkte / Folgephasen
 
 | Phase | Inhalt | Status |
 |-------|--------|--------|
 | 3.6 | Lamp-State-Mutation (State-Model + PWM-Backend-Abstraktion) | **erledigt** (Commit `6d5968c`) |
-| 4 | Echte PWM/GPT-Register-Writes + Persistent Config (Flash R/W) | offen |
+| 3.7 | `mcufw_pwm` → echte GPT0-Kanäle (Register-Seam + Host-Test `pwm_register`) | **erledigt** (Commit `40a8727`) |
+| 4 | Persistent Config (Flash R/W) + Paar-Zuordnung/Mischtabelle am Silizium bestätigen | offen |
 | 5 | Echter AP-Join + MQTT-Broker-Connect (Flash-Gate) | offen |
 | 6 | OTA-Download (app_url/file_md5/proc=dnld) | offen |
 
-**Hinweis:** `mcufw_pwm_*` ist bewusst nur die Abstraktionsschicht — es wird in
-Phase 3.6 **kein** GPT-Register geschrieben (Host-Test und Target teilen sich
-denselben Code). Das Verdrahten auf `mcufw_lamp_set()` / GPT0-CMR0 pro Kanal
-ist Teil von Phase 4. MQTT-Connect und AP-Join bleiben Phase 5.
+**Hinweis:** Seit 3.7 schreibt `mcufw_pwm_*` echte GPT0-Register (CMR0 +
+`USER_REQ`-Latch) — über den Seam `mcufw_pwm_hal_*`, den Host-Test und Target
+teilen (Host: Stub-Array, Target: MMIO). Offen bleibt allein die
+Silizium-Bestätigung der Kanal-Paar-Zuordnung (Weiß vs. Farbe) und der
+GPT0-Taktfrequenz; beides braucht Board-Zugriff. Der Diagnose-Sweep
+`mcufw_lamp_set()` im Target-Banner (3.3) bleibt bestehen und überschreibt
+bewusst alle vier Kanäle — er ist der einzige Treiber, solange der AP-Join
+(Phase 5) den State-Pfad noch nicht live speist.
 
 ## §6 Referenzen
 - `docs/06_ota_delivery_path.md` — miIO-OTA-Protokoll
