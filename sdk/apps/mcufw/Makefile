@@ -68,7 +68,9 @@ MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_lan_rpc.o $(BUILD)/mcufw/mcufw_mqtt.o \
               $(BUILD)/mcufw/mcufw_cf.o $(BUILD)/mcufw/mcufw_lwip_chksum.o \
               $(BUILD)/mcufw/mcufw_state.o $(BUILD)/mcufw/mcufw_pwm.o \
-              $(BUILD)/mcufw/mcufw_pwm_hal_target.o
+              $(BUILD)/mcufw/mcufw_pwm_hal_target.o \
+              $(BUILD)/mcufw/mcufw_net.o $(BUILD)/mcufw/mcufw_net_lwip.o \
+              $(BUILD)/mcufw/mcufw_runtime.o
 
 # --- FreeRTOS objects ----------------------------------------------------
 FR_DIR := $(SDK_DIR)/sdk/external/freertos
@@ -114,7 +116,7 @@ $(BUILD)/lwip/init.o: $(LW_DIR)/src/core/init.c | $(BUILD)/lwip
 
 ALL_OBJS := $(MCUFW_OBJS) $(FR_OBJS) $(LW_OBJS) 
 
-.PHONY: all elf container check-vendor check-net inspect clean host-test
+.PHONY: all elf container check-vendor check-net check-owner check-owner-elf inspect clean host-test
 
 all: container
 
@@ -130,6 +132,12 @@ $(BUILD)/mcufw/%.o: $(SRC)/%.c | $(BUILD)/mcufw
 # main.c lives in app root, not src/ — needs explicit rule
 $(BUILD)/mcufw/main.o: main.c | $(BUILD)/mcufw
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# Phase 3.8: the runtime loop must not flood the UART with status lines.  There
+# is no RTOS tick source in this image yet (AP join / scheduler = phase 5), so
+# the loop runs unpaced and the status interval is the only rate limit.
+$(BUILD)/mcufw/mcufw_runtime.o: $(SRC)/mcufw_runtime.c $(SRC)/mcufw_runtime.h | $(BUILD)/mcufw
+	$(CC) $(CFLAGS) -DMCUFW_RUNTIME_STATUS_EVERY=65536u -c $< -o $@
 
 
 # --- FreeRTOS compile rules ----------------------------------------------
@@ -257,7 +265,39 @@ check-net: $(ELF)
 	@echo "== lwip: $$($(NM) $(ELF) | grep -cE " T (udp_|tcp_|pbuf_|netif_|dhcp_)") lwIP-Symbole"
 	@echo "== undefiniert: 0"
 
-container: $(ELF) check-vendor check-net
+# --- phase 3.8: single-writer guard --------------------------------------
+# mcufw_lamp_set() may be called from exactly ONE place in the application
+# sources: the bounded boot diagnosis in main.c.  Any second call site (e.g. a
+# reintroduced ramp in the runtime loop) fails the build here.
+check-owner:
+	@bad=0; \
+	for f in main.c $(SRC)/*.c; do \
+		case "$$f" in *mcufw_gpt.c) continue;; esac; \
+		n=$$(grep -E 'mcufw_lamp_set[[:space:]]*\(' "$$f" | grep -vE '^[[:space:]]*(/\*|\*|//)' | wc -l); \
+		if [ "$$n" != "0" ]; then \
+			echo "   owner: $$f -> $$n call site(s)"; \
+			if [ "$$f" != "main.c" ] || [ "$$n" != "1" ]; then \
+				echo "FEHLER: mcufw_lamp_set() in $$f ($$n Aufrufe) -- erlaubt ist genau 1 Aufruf in main.c (Boot-Diagnose)"; \
+				bad=1; \
+			fi; \
+		fi; \
+	done; \
+	test "$$bad" = "0" || exit 1; \
+	n=$$(grep -E 'mcufw_lamp_set[[:space:]]*\(' main.c | grep -vE '^[[:space:]]*(/\*|\*|//)' | wc -l); \
+	test "$$n" = "1" \
+		|| { echo "FEHLER: Boot-Sweep-Aufruf von mcufw_lamp_set() fehlt in main.c (gueltige Aufrufe: $$n)"; exit 1; }; \
+	echo "== owner: mcufw_lamp_set 1 Aufrufstelle (main.c boot-ramp), Dauerpfad schreibt nur mcufw_pwm"
+
+check-owner-elf: $(ELF)
+	@$(NM) $(ELF) | grep -q "T mcufw_pwm_service" || { echo "FEHLER: mcufw_pwm_service fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_runtime_tick" || { echo "FEHLER: mcufw_runtime_tick fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_net_pump_udp" || { echo "FEHLER: UDP-Pump fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_net_pump_tcp" || { echo "FEHLER: TCP-Pump fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_net_lwip_bind" || { echo "FEHLER: lwIP-Bindung fehlt im Image"; exit 1; }
+	@! $(NM) $(ELF) | grep -q "mcufw_net_host" || { echo "FEHLER: Host-Transport im Target-Image gelinkt"; exit 1; }
+	@echo "== owner-elf: runtime-owner + beide Netz-Pumps im Image, kein Host-Transport"
+
+container: $(ELF) check-vendor check-net check-owner check-owner-elf
 	@test -x $(AXF2FW) || { echo "FEHLER: $(AXF2FW) fehlt"; exit 1; }
 	@rm -f $(CONTAINER)
 	cd $(BUILD) && $(AXF2FW) mcufw.elf mcufw_MRVL.bin
@@ -270,6 +310,8 @@ HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
              $(SRC)/mcufw_lan_rpc.c $(SRC)/mcufw_mqtt.c $(SRC)/mcufw_cf.c \
              $(SRC)/mcufw_state.c $(SRC)/mcufw_pwm.c \
              $(SRC)/mcufw_pwm_hal_host.c \
+             $(SRC)/mcufw_net.c $(SRC)/mcufw_net_host.c \
+             $(SRC)/mcufw_runtime.c \
              $(ROOT)/host_test.c
 
 host-test:

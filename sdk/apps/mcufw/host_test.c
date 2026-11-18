@@ -10,6 +10,8 @@
  *   - PWM backend seam: duty word, recorded mode/calls (3.6)
  *   - PWM register writes: exact GPT0 CMR0/USER_REQ words per command (3.7)
  *   - RPC/miIO dispatch mutating that state, response carries the new value
+ *   - Runtime owner (3.8): bounded boot sweep, single writer, idle invariant,
+ *     network pumps driven by the service loop
  *
  * Exit code 0 = ALL PASS.
  */
@@ -27,6 +29,9 @@
 #include "mcufw_regs.h"
 #include "mcufw_miio.h"
 #include "mcufw_crypto.h"
+#include "mcufw_net.h"
+#include "mcufw_net_host.h"
+#include "mcufw_runtime.h"
 
 static unsigned total_pass;
 static unsigned total_fail;
@@ -586,9 +591,168 @@ static void run_miio_state(void)
           rc == MCUFW_MIIO_OK && strstr(plain, "-32602") != NULL);
 }
 
+/* ---- runtime owner / single-writer service loop (phase 3.8) ------------- */
+#define DID_HOST 0x05eb8034u
+
+static int      g_host_out;
+static int      g_host_button;
+static unsigned g_host_status_calls;
+static char     g_host_status[160];
+
+static int host_out_read(void) { return g_host_out; }
+static int host_button_read(void) { return g_host_button; }
+static void host_status_write(const char *line)
+{
+    g_host_status_calls++;
+    snprintf(g_host_status, sizeof(g_host_status), "%s", line);
+}
+
+static void run_runtime_owner(void)
+{
+    static const mcufw_runtime_io_t io = {
+        host_out_read, host_button_read, host_status_write
+    };
+    const mcufw_runtime_stats_t *rt;
+    const mcufw_net_stats_t *net;
+    const mcufw_net_host_stats_t *hst;
+    mcufw_state_t *st = mcufw_state();
+    uint32_t cmr0_cmd;
+    uint32_t reg_after_cmd;
+    unsigned i;
+    int rc;
+
+    /* fresh world: pwm backend forgets everything, host transport plugged in */
+    mcufw_state_init(st);
+    mcufw_pwm_init();
+    mcufw_pwm_stats_reset();
+    mcufw_net_host_reset();
+    rc = mcufw_net_init(mcufw_net_host_transport(), DID_HOST);
+
+    g_host_out = 1;
+    g_host_button = 0;
+    g_host_status_calls = 0;
+    g_host_status[0] = '\0';
+    mcufw_runtime_init(&io);
+
+    rt = mcufw_runtime_stats();
+    net = mcufw_net_stats();
+    hst = mcufw_net_host_stats();
+
+    /* -- 1. transport really plugged in, loop samples the board ----------- */
+    for (i = 0; i < 3; i++)
+        mcufw_runtime_tick();
+    check("runtime_owner/net_init", rc == 0);
+    check("runtime_owner/board_io_per_tick",
+          rt->ticks == 3u && rt->out_reads == 3u && rt->button_reads == 3u &&
+          rt->last_out == 1u && rt->last_button == 0);
+
+    /* -- 2. both network pumps issued once per tick ----------------------- */
+    check("runtime_owner/pumps_per_tick",
+          net->udp_pumps == 3u && net->tcp_pumps == 3u &&
+          rt->net_udp_pumps == net->udp_pumps &&
+          rt->net_tcp_pumps == net->tcp_pumps);
+
+    /* -- 3. a state command lands in GPT0 CMR0 (bright 40 -> 0x7530) ------ */
+    mcufw_state_set_power(st, 1);
+    mcufw_state_set_bright(st, 40);
+    cmr0_cmd = mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0);
+    reg_after_cmd = mcufw_pwm_stats()->reg_writes;
+    check("runtime_owner/state_path_writes",
+          cmr0_cmd == 0x7530u && mcufw_pwm_duty(40) == 20000u &&
+          mcufw_pwm_stats()->white_level == 20000u && reg_after_cmd > 0u);
+
+    /* -- 4. >= 3 loop ticks neither rewrite nor lose that value ----------- */
+    {
+        uint32_t idle_before;
+        uint32_t wt_before;
+
+        mcufw_runtime_tick();       /* the tick that consumes the command  */
+        idle_before = rt->idle_ticks;
+        wt_before = rt->write_ticks;
+        for (i = 0; i < 3; i++)
+            mcufw_runtime_tick();
+        check("runtime_owner/cmr0_survives_ticks",
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == 0x7530u &&
+              mcufw_pwm_stats()->reg_writes == reg_after_cmd);
+        check("runtime_owner/idle_tick_zero_writes",
+              rt->idle_ticks == idle_before + 3u && rt->write_ticks == wt_before &&
+              rt->last_tick_writes == 0u);
+    }
+
+    /* -- 5. the dirty flag is consumed exactly once -----------------------
+     * Note the write itself happens in the command path (state -> pwm),
+     * so reg_writes rises on the API call and the tick only consumes the
+     * flag: a tick never re-programs on its own. */
+    {
+        uint32_t wt_before = rt->write_ticks;
+        uint32_t applied_before = mcufw_pwm_stats()->service_applied;
+        uint32_t rw_before = mcufw_pwm_stats()->reg_writes;
+        uint32_t rw_cmd;
+
+        mcufw_state_set_bright(st, 55);
+        rw_cmd = mcufw_pwm_stats()->reg_writes;
+        mcufw_runtime_tick();                    /* consumes the change   */
+        {
+            int consumed = (rt->write_ticks == wt_before + 1u &&
+                            mcufw_pwm_stats()->service_applied == applied_before + 1u);
+
+            mcufw_runtime_tick();                /* nothing left to do    */
+            check("runtime_owner/dirty_consumed_once",
+                  rw_cmd > rw_before && consumed &&
+                  rt->write_ticks == wt_before + 1u &&
+                  rt->last_tick_writes == 0u);
+        }
+    }
+
+    /* -- 6. a UDP datagram is read by the loop; plain JSON is not a miIO
+     *       frame, so the miIO layer rejects it and the lamp stays as it
+     *       was.  What this proves: the pump moves real bytes per tick and
+     *       a hostile/garbage datagram cannot touch GPT0. */
+    {
+        static const char req[] = "{\"id\":9,\"method\":\"set_ps\",\"params\":[\"off\"]}";
+        uint32_t cmr_before = mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0);
+
+        mcufw_net_host_push_udp((const uint8_t *)req, sizeof(req) - 1u);
+        mcufw_runtime_tick();
+        check("runtime_owner/udp_read_rejected",
+              net->udp_datagrams == 1u && net->udp_dropped == 1u &&
+              st->power == 1 &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == cmr_before);
+    }
+
+    /* -- 7. TCP 55443 request through the loop answers with the state ----- */
+    {
+        static const char line[] = "{\"id\":10,\"method\":\"get_prop\",\"params\":[\"bright\"]}";
+
+        mcufw_net_host_push_line(line, sizeof(line) - 1u);
+        mcufw_runtime_tick();
+        check("runtime_owner/tcp_dispatch",
+              net->tcp_requests == 1u && hst->tcp_sends == 1u &&
+              hst->tcp_send_bytes > 0u &&
+              strstr(mcufw_net_host_last_tcp_tx(), "55") != NULL);
+    }
+
+    /* -- 8. the periodic status line reports the true CMR0 word ----------- */
+    while (rt->ticks % MCUFW_RUNTIME_STATUS_EVERY != 0u)
+        mcufw_runtime_tick();
+    check("runtime_owner/status_line",
+          rt->status_lines >= 1u && g_host_status_calls == rt->status_lines &&
+          strstr(g_host_status, "cmr0 0x") != NULL &&
+          strstr(g_host_status, "udp 1") != NULL &&
+          strstr(g_host_status, "tcp 1") != NULL);
+
+    printf("  runtime_owner: ticks=%u udp_pumps=%u tcp_pumps=%u "
+           "udp_datagrams=%u tcp_requests=%u idle=%u write_ticks=%u "
+           "loop_reg_writes=%u (writes issued BY a tick; the state path "
+           "programs CMR0 at command time)\n",
+           rt->ticks, net->udp_pumps, net->tcp_pumps, net->udp_datagrams,
+           net->tcp_requests, rt->idle_ticks, rt->write_ticks,
+           rt->reg_writes_total);
+}
+
 int main(void)
 {
-    printf("=== mcufw phase 3.7 host test ===\n");
+    printf("=== mcufw phase 3.8 host test ===\n");
 
     printf("\n[crypto + miIO selftest]\n");
     run_selftest();
@@ -619,6 +783,9 @@ int main(void)
 
     printf("\n[miIO state mutation]\n");
     run_miio_state();
+
+    printf("\n[runtime owner / single writer]\n");
+    run_runtime_owner();
 
     printf("\n=== TOTAL: %u PASS, %u FAIL ===\n", total_pass, total_fail);
     return total_fail == 0 ? 0 : 1;

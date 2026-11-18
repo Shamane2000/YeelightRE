@@ -36,12 +36,46 @@
  *            no per-hue channel table is present in the reference image, so
  *            only the HSV V component drives the duty word; hue/sat are
  *            recorded for the future mix table.
+ *
+ * OWNERSHIP (phase 3.8) -- READ BEFORE ADDING A CALL
+ *   This module is the SINGLE WRITER on the four lamp channels of GPT0.
+ *   mcufw_lamp_set() (mcufw_gpt.c) may only be called from the bounded boot
+ *   diagnosis in main.c; the runtime loop never programs a channel itself, it
+ *   only calls mcufw_pwm_service().  Two properties make that hold:
+ *
+ *     - mcufw_pwm_service() issues no register write at all; it just reports
+ *       and clears the dirty flag, so a tick without a state change performs
+ *       exactly 0 GPT0 writes (no periodic re-writing of CMR0).
+ *     - a command that equals the currently programmed command is skipped
+ *       (skipped_identical++), so repeating get_prop/brightness-equal requests
+ *       cannot rewrite CMR0 either.
+ *
+ *   The Makefile target `check-owner` enforces the single call site
+ *   mechanically (grep guard); host_test.c section `runtime_owner` asserts the
+ *   resulting register behaviour.
  */
 #include "mcufw_regs.h"
 #include "mcufw_pwm.h"
 #include "mcufw_pwm_hal.h"
 
 static mcufw_pwm_stats_t g_pwm;
+
+/* The command that is currently programmed into the four channels.  Used to
+ * skip redundant commands (a repeated identical set_bright must not rewrite
+ * CMR0) and to prove the idle invariant of the runtime loop. */
+typedef struct {
+	uint8_t  mode;
+	uint8_t  bright;
+	uint16_t ct;
+	uint16_t level;
+} pwm_programmed_t;
+
+static pwm_programmed_t g_prog;
+
+/* Sentinel for "the registers hold nothing we know about" (e.g. after the
+ * boot ramp wrote CMR0 behind this module's back).  Any first command then
+ * programs unconditionally instead of being skipped as identical. */
+#define PWM_PROG_UNKNOWN 0xFFu
 
 /* --------------------------------------------------------------- logging -- */
 static void log_put(char *dst, size_t cap, size_t *pos, const char *s)
@@ -151,7 +185,23 @@ void mcufw_pwm_init(void)
 	g_pwm.restore_white = 0;
 	g_pwm.restore_color = 0;
 	g_pwm.reg_writes = 0;
+	g_pwm.dirty = 0;
+	g_pwm.service_applied = 0;
+	g_pwm.service_idle = 0;
+	g_pwm.skipped_identical = 0;
 	g_pwm.last_log[0] = '\0';
+
+	g_prog.mode = PWM_PROG_UNKNOWN;
+	g_prog.bright = 0u;
+	g_prog.ct = 0u;
+	g_prog.level = 0u;
+}
+
+void mcufw_pwm_invalidate(void)
+{
+	/* Someone else touched the channels (boot ramp diagnosis).  Forget the
+	 * programmed command so the next state command writes again. */
+	g_prog.mode = PWM_PROG_UNKNOWN;
 }
 
 void mcufw_pwm_set(uint8_t bright, uint16_t ct)
@@ -164,6 +214,20 @@ void mcufw_pwm_set(uint8_t bright, uint16_t ct)
 	g_pwm.ct = ct;
 
 	if (bright == 0u) {
+		if (g_prog.mode == MCUFW_PWM_MODE_OFF) {
+			/* Channels already dark: keep the registers untouched. */
+			g_pwm.mode = MCUFW_PWM_MODE_OFF;
+			g_pwm.bright = 0;
+			g_pwm.powered = 0;
+			g_pwm.skipped_identical++;
+			log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos,
+				"pwm off ct=");
+			log_num(g_pwm.last_log, sizeof(g_pwm.last_log), &pos,
+				(long)ct);
+			log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos,
+				" same");
+			return;
+		}
 		/* Power-off: all four channels to level 0 (CMR0 = period).
 		 * The last non-dark command stays in restore_* so a power-on
 		 * can bring the lamp back where it was. */
@@ -171,16 +235,40 @@ void mcufw_pwm_set(uint8_t bright, uint16_t ct)
 		g_pwm.bright = 0;
 		g_pwm.powered = 0;
 		drive(DRIVE_OFF, 0u);
+		g_prog.mode = MCUFW_PWM_MODE_OFF;
+		g_prog.bright = 0u;
+		g_prog.ct = ct;
+		g_prog.level = 0u;
+		g_pwm.dirty = 1;
 		log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, "pwm off ct=");
 		log_num(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, (long)ct);
 		return;
 	}
 
 	level = mcufw_pwm_duty(bright);
+	if (g_prog.mode == MCUFW_PWM_MODE_CT && g_prog.bright == bright &&
+	    g_prog.ct == ct && g_prog.level == level) {
+		/* Repeated identical command: do not rewrite CMR0. */
+		g_pwm.mode = MCUFW_PWM_MODE_CT;
+		g_pwm.bright = bright;
+		g_pwm.powered = 1;
+		g_pwm.skipped_identical++;
+		log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos,
+			"pwm ct bright=");
+		log_num(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, (long)bright);
+		log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, " same");
+		return;
+	}
+
 	g_pwm.mode = MCUFW_PWM_MODE_CT;
 	g_pwm.bright = bright;
 	g_pwm.powered = 1;
 	drive(DRIVE_WHITE, level);
+	g_prog.mode = MCUFW_PWM_MODE_CT;
+	g_prog.bright = bright;
+	g_prog.ct = ct;
+	g_prog.level = level;
+	g_pwm.dirty = 1;
 	g_pwm.restore_mode = MCUFW_PWM_MODE_CT;
 	g_pwm.restore_bright = bright;
 	g_pwm.restore_white = level;
@@ -206,10 +294,24 @@ void mcufw_pwm_hsv(uint16_t hue, uint8_t sat, uint8_t val)
 	g_pwm.val = val;
 
 	if (val == 0u) {
+		if (g_prog.mode == MCUFW_PWM_MODE_OFF) {
+			g_pwm.mode = MCUFW_PWM_MODE_OFF;
+			g_pwm.bright = 0;
+			g_pwm.powered = 0;
+			g_pwm.skipped_identical++;
+			log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos,
+				"pwm hsv v=0 same");
+			return;
+		}
 		g_pwm.mode = MCUFW_PWM_MODE_OFF;
 		g_pwm.bright = 0;
 		g_pwm.powered = 0;
 		drive(DRIVE_OFF, 0u);
+		g_prog.mode = MCUFW_PWM_MODE_OFF;
+		g_prog.bright = 0u;
+		g_prog.ct = 0u;
+		g_prog.level = 0u;
+		g_pwm.dirty = 1;
 		log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, "pwm hsv h=");
 		log_num(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, (long)hue);
 		log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, " s=");
@@ -219,10 +321,28 @@ void mcufw_pwm_hsv(uint16_t hue, uint8_t sat, uint8_t val)
 	}
 
 	level = mcufw_pwm_duty(val);
+	if (g_prog.mode == MCUFW_PWM_MODE_HSV && g_prog.bright == val &&
+	    g_prog.level == level) {
+		g_pwm.mode = MCUFW_PWM_MODE_HSV;
+		g_pwm.bright = val;
+		g_pwm.powered = 1;
+		g_pwm.skipped_identical++;
+		log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos,
+			"pwm hsv v=");
+		log_num(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, (long)val);
+		log_put(g_pwm.last_log, sizeof(g_pwm.last_log), &pos, " same");
+		return;
+	}
+
 	g_pwm.mode = MCUFW_PWM_MODE_HSV;
 	g_pwm.bright = val;
 	g_pwm.powered = 1;
 	drive(DRIVE_COLOR, level);
+	g_prog.mode = MCUFW_PWM_MODE_HSV;
+	g_prog.bright = val;
+	g_prog.ct = 0u;
+	g_prog.level = level;
+	g_pwm.dirty = 1;
 	g_pwm.restore_mode = MCUFW_PWM_MODE_HSV;
 	g_pwm.restore_bright = val;
 	g_pwm.restore_white = 0u;
@@ -247,12 +367,41 @@ void mcufw_pwm_restore(void)
 		g_pwm.mode = MCUFW_PWM_MODE_HSV;
 		g_pwm.bright = g_pwm.restore_bright;
 		drive(DRIVE_COLOR, g_pwm.restore_color);
+		g_prog.mode = MCUFW_PWM_MODE_HSV;
+		g_prog.bright = g_pwm.restore_bright;
+		g_prog.ct = 0u;
+		g_prog.level = g_pwm.restore_color;
 	} else {
 		g_pwm.mode = MCUFW_PWM_MODE_CT;
 		g_pwm.bright = g_pwm.restore_bright;
 		drive(DRIVE_WHITE, g_pwm.restore_white);
+		g_prog.mode = MCUFW_PWM_MODE_CT;
+		g_prog.bright = g_pwm.restore_bright;
+		g_prog.ct = g_pwm.ct;
+		g_prog.level = g_pwm.restore_white;
 	}
 	g_pwm.powered = 1;
+	g_pwm.dirty = 1;
+}
+
+int mcufw_pwm_service(void)
+{
+	/* Called once per runtime tick.  Deliberately performs NO register
+	 * write: the state path already programmed the channels, this call only
+	 * consumes the dirty flag so the loop can report "state was applied"
+	 * versus "nothing to do" without ever touching CMR0 itself. */
+	if (!g_pwm.dirty) {
+		g_pwm.service_idle++;
+		return 0;
+	}
+	g_pwm.dirty = 0;
+	g_pwm.service_applied++;
+	return 1;
+}
+
+uint32_t mcufw_pwm_cmr0(uint8_t ch)
+{
+	return mcufw_pwm_hal_read(GPT_CHAN(ch) + GPT_CH_CMR0);
 }
 
 const mcufw_pwm_stats_t *mcufw_pwm_stats(void)

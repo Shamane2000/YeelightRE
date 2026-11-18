@@ -21,6 +21,9 @@
 #include "mcufw_cf.h"
 #include "mcufw_pwm.h"
 #include "mcufw_state.h"
+#include "mcufw_net.h"
+#include "mcufw_net_lwip.h"
+#include "mcufw_runtime.h"
 
 #define MCUFW_VERSION "mcufw 0.6-phase3.6"
 
@@ -383,6 +386,92 @@ static void net_state_proof(void)
 	uart_puts("\r\n");
 }
 
+/* ---- phase 3.8: bounded boot diagnosis + non-blocking service loop ------ */
+
+/* Number of diagnostic ramp steps at boot.  The ramp exists only to prove the
+ * four channels are programmable; the permanent path is the state path.
+ * 0 disables the ramp completely (build with -DMCUFW_BOOT_SWEEP_ITERS=0). */
+#ifndef MCUFW_BOOT_SWEEP_ITERS
+#define MCUFW_BOOT_SWEEP_ITERS 3u
+#endif
+
+/* THIS IS THE ONLY CALL SITE OF mcufw_lamp_set() IN THE WHOLE IMAGE.
+ * It runs exactly MCUFW_BOOT_SWEEP_ITERS times and never returns to it.
+ * `make check-owner` fails the build if a second call site shows up. */
+static void boot_ramp_sweep(void)
+{
+	for (uint32_t iter = 1; iter <= (uint32_t)MCUFW_BOOT_SWEEP_ITERS; iter++) {
+		uint16_t step = (uint16_t)(iter & 0x3fu);
+
+		mcufw_lamp_set((uint16_t)(step * (MCUFW_LAMP_PERIOD / 64u)));
+		uart_puts("mcufw ramp ");
+		uart_put_dec(iter);
+		uart_puts("/");
+		uart_put_dec((uint32_t)MCUFW_BOOT_SWEEP_ITERS);
+		uart_puts(" lamp ");
+		uart_put_dec(mcufw_lamp_get());
+		uart_puts(" cmr0 ");
+		uart_put_hex32(mcufw_lamp_cmr0(0));
+		uart_puts(" out ");
+		uart_put_dec((uint32_t)gpio_in_get(MCUFW_PIN_BOARD_OUT0));
+		uart_puts("\r\n");
+		/* pacing for the human reading the UART during bring-up; the
+		 * service loop afterwards never calls busy_delay again. */
+		busy_delay(500000);
+	}
+}
+
+/* --- I/O the runtime loop is not allowed to do itself -------------------- */
+static int rt_board_out(void)
+{
+	return gpio_in_get(MCUFW_PIN_BOARD_OUT0);
+}
+
+static int rt_button(void)
+{
+	if (MCUFW_BUTTON_GPIO_PIN >= 0)
+		return gpio_in_get(MCUFW_BUTTON_GPIO_PIN);
+	return -1;
+}
+
+static void rt_status(const char *line)
+{
+	uart_puts(line);
+	uart_puts("\r\n");
+}
+
+/* Bind UDP 54321 / TCP 55443, then run the service loop for ever.
+ * No busy_delay, no socket to any peer, no AP join (phase 5). */
+static void runtime_loop(void)
+{
+	static const mcufw_runtime_io_t io = {
+		rt_board_out,
+		rt_button,
+		rt_status
+	};
+	int bind_rc;
+
+	mcufw_net_init(NULL, MCUFW_MIIO_DID);
+	bind_rc = mcufw_net_lwip_bind();
+	mcufw_net_bind_transport(mcufw_net_lwip_transport());
+
+	uart_puts("net bind udp ");
+	uart_put_dec((uint32_t)MCUFW_MIIO_PORT);
+	uart_puts(" tcp ");
+	uart_put_dec((uint32_t)MCUFW_LAN_RPC_PORT);
+	uart_puts(" rc ");
+	uart_put_dec((uint32_t)(bind_rc == 0 ? 0u : 1u));
+	uart_puts(" bound ");
+	uart_put_dec((uint32_t)mcufw_net_lwip_bound());
+	uart_puts("\r\n");
+
+	mcufw_runtime_init(&io);
+	uart_puts("runtime-owner single-writer armed\r\n");
+
+	for (;;)
+		mcufw_runtime_tick();
+}
+
 int main(void)
 {
 	uart0_init();
@@ -432,22 +521,19 @@ int main(void)
 		uart_puts("button pin none (kein GPIO-Taster im Referenz-Image)\r\n");
 	uart_puts("banner-ready\r\n");
 
-	for (unsigned iter = 1;; iter++) {
-		uint16_t step = (uint16_t)(iter & 0x3fu);
+	boot_ramp_sweep();
 
-		mcufw_lamp_set((uint16_t)(step * (MCUFW_LAMP_PERIOD / 64u)));
-		busy_delay(2000000);
+	/* Hand the lamp over to the state path: the ramp wrote CMR0 behind the
+	 * PWM backend's back, so forget the programmed command and re-apply the
+	 * authoritative state once.  From here on mcufw_pwm is the only writer. */
+	mcufw_pwm_invalidate();
+	mcufw_state_apply(mcufw_state());
+	uart_puts("owner mcufw_pwm lamp ");
+	uart_put_dec(mcufw_pwm_stats()->white_level);
+	uart_put_dec(mcufw_pwm_stats()->color_level);
+	uart_puts(" cmr0 ");
+	uart_put_hex32(mcufw_pwm_cmr0(0));
+	uart_puts("\r\n");
 
-		if ((iter & 0x1fu) == 0u) {
-			uart_puts("mcufw loop ");
-			uart_put_hex32(iter);
-			uart_puts(" lamp ");
-			uart_put_dec(mcufw_lamp_get());
-			uart_puts(" cmr0 ");
-			uart_put_hex32(mcufw_lamp_cmr0(0));
-			uart_puts(" out ");
-			uart_put_dec((uint32_t)gpio_in_get(MCUFW_PIN_BOARD_OUT0));
-			uart_puts("\r\n");
-		}
-	}
+	runtime_loop();
 }

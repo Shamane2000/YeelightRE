@@ -55,6 +55,12 @@ typedef struct {
 	uint16_t restore_white;
 	uint16_t restore_color;
 	uint32_t reg_writes;  /* GPT0 register writes issued by this module */
+	/* --- phase 3.8: ownership / idle invariant -------------------------- */
+	uint8_t  dirty;               /* 1 = channels programmed since the last
+				       *     mcufw_pwm_service() call          */
+	uint32_t service_applied;     /* service calls that consumed dirty=1   */
+	uint32_t service_idle;        /* service calls with nothing to do      */
+	uint32_t skipped_identical;   /* commands that rewrote nothing         */
 	char     last_log[64]; /* human-readable last command */
 } mcufw_pwm_stats_t;
 
@@ -70,6 +76,21 @@ void mcufw_pwm_hsv(uint16_t hue, uint8_t sat, uint8_t val);
 /* Re-program the last non-dark command after a power off.  No-op if the lamp
  * was never driven since mcufw_pwm_init(). */
 void mcufw_pwm_restore(void);
+
+/* Phase 3.8: called once per runtime tick by mcufw_runtime.c.  Consumes the
+ * dirty flag and reports whether the state path had programmed the channels
+ * since the previous call.  Performs ZERO register writes by design -- this
+ * module stays the only writer, the loop only observes it.
+ * Returns 1 = a state change was consumed, 0 = nothing to do. */
+int mcufw_pwm_service(void);
+
+/* Forget what was programmed (someone else touched the channels: boot ramp).
+ * The next state command writes again instead of being skipped as identical. */
+void mcufw_pwm_invalidate(void);
+
+/* Read back the CMR0 word of one channel through the same HAL seam the driver
+ * writes through (host: stub window, target: real MMIO). */
+uint32_t mcufw_pwm_cmr0(uint8_t ch);
 
 /* Read-only view of what the backend was last asked to do. */
 const mcufw_pwm_stats_t *mcufw_pwm_stats(void);
