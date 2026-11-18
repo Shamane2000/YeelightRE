@@ -219,7 +219,7 @@ def main():
 
     print(f"\n[*] Testing miIO connectivity to {args.host}...")
     try:
-        info = miio_send(args.host, args.token, "miIO.info", {}, msg_id=999)
+        info = miio_send(args.host, args.token, "miIO.info", {}, req_id=999)
         print(f"    Response: {json.dumps(info)}")
     except Exception as e:
         print(f"ERROR: Connectivity failed: {e}"); sys.exit(3)
@@ -233,7 +233,7 @@ def main():
     print(f"\n[*] Sending miIO.ota...")
     for attempt in range(1, 4):
         try:
-            resp = miio_send(args.host, args.token, "miIO.ota", params, msg_id=1)
+            resp = miio_send(args.host, args.token, "miIO.ota", params, req_id=1)
             print(f"    Attempt {attempt}: {json.dumps(resp)}")
             if "result" in resp or resp.get("code") == 0:
                 print("\n[OK] OTA accepted."); break
@@ -247,7 +247,7 @@ def main():
     for _ in range(60):
         time.sleep(5)
         try:
-            state = miio_send(args.host, args.token, "miIO.get_ota_state", {}, msg_id=2)
+            state = miio_send(args.host, args.token, "miIO.get_ota_state", {}, req_id=2)
             s = state.get("result", [None])[0] if isinstance(state.get("result"), list) else state.get("result")
             print(f"    State: {s}")
             if s in ("done", "success", 2): print("\n[OK] OTA done!"); sys.exit(0)
