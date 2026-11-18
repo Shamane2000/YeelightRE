@@ -40,8 +40,8 @@ LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -mabi=aapcs \
              -nostdlib -nostartfiles -Wl,--build-id=none \
              -Wl,-Map=$(TARGET).map -T$(LDSCRIPT)
 
-SRCS      := $(SRC)/startup.c $(SRC)/main.c
-OBJS      := $(BUILD)/startup.o $(BUILD)/main.o
+SRCS      := $(SRC)/startup.c $(SRC)/main.c $(SRC)/mcufw_gpt.c
+OBJS      := $(BUILD)/startup.o $(BUILD)/main.o $(BUILD)/mcufw_gpt.o
 
 .PHONY: all elf container check-vendor inspect clean
 
@@ -72,6 +72,9 @@ check-vendor: $(ELF)
 		|| { echo "FEHLER: GPIO_PinModeConfig aus libwmsdk.a nicht gelinkt"; exit 1; }
 	@test "$$($(NM) $(ELF) | grep -c "^[0-9a-f]* T main$$")" = "1" \
 		|| { echo "FEHLER: mehrdeutige main()-Definition im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_gpt0_pwm_init" || { echo "FEHLER: GPT0-PWM-Treiber (mcufw_gpt.c) nicht im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_lamp_set" || { echo "FEHLER: mcufw_lamp_set fehlt im Image"; exit 1; }
+	@echo "== lamp pwm: $$($(NM) $(ELF) | grep -c " T mcufw_lamp_") Symbole (GPT0 CH0/1/4/5)"
 	@echo "== vendor link: $$($(NM) $(ELF) | grep -c " T GPIO_") Symbole aus $(notdir $(VENDOR_LIB))"
 
 container: $(ELF) check-vendor
