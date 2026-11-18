@@ -19,6 +19,8 @@
 #include "mcufw_net.h"
 #include "mcufw_regs.h"
 #include "mcufw_runtime.h"
+#include "mcufw_config.h"
+#include "mcufw_state.h"
 
 static mcufw_runtime_io_t g_io;
 static mcufw_runtime_stats_t g_rt;
@@ -108,6 +110,7 @@ void mcufw_runtime_init(const mcufw_runtime_io_t *io)
 	g_rt.write_ticks = 0u;
 	g_rt.reg_writes_total = 0u;
 	g_rt.last_tick_writes = 0u;
+	g_rt.config_saves = 0u;
 	g_rt.last_out = 0u;
 	g_rt.last_button = -1;
 	g_rt.last_status[0] = '\0';
@@ -152,6 +155,12 @@ void mcufw_runtime_tick(void)
 		g_rt.write_ticks++;
 	else
 		g_rt.idle_ticks++;
+
+	/* 3b. Persistenz: nur bei einer neuen State-Mutation, nie pro Idle-Tick.
+	 * mcufw_config_service() vergleicht den Mutation-Zaehler und ueberspringt
+	 * zudem byte-identische Bloecke. */
+	if (mcufw_config_service(mcufw_state()))
+		g_rt.config_saves++;
 
 	after = mcufw_pwm_stats()->reg_writes;
 	g_rt.last_tick_writes = after - before;

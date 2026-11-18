@@ -32,6 +32,8 @@
 #include "mcufw_net.h"
 #include "mcufw_net_host.h"
 #include "mcufw_runtime.h"
+#include "mcufw_config.h"
+#include "mcufw_config_hal.h"
 
 static unsigned total_pass;
 static unsigned total_fail;
@@ -750,9 +752,222 @@ static void run_runtime_owner(void)
            rt->reg_writes_total);
 }
 
+/* ---- persistent config / power-on behaviour (phase 4) ------------------- */
+static void run_config_persist(void)
+{
+    mcufw_state_t st;
+    mcufw_state_t loaded;
+    const mcufw_config_stats_t *cfg;
+    uint8_t block[MCUFW_CONFIG_SIZE];
+    uint8_t *raw;
+    unsigned i;
+    int rc;
+
+    /* -- 1. round trip: every field comes back bit-exact ------------------ */
+    mcufw_config_init();
+    mcufw_config_hal_stub_reset();
+    mcufw_state_init(&st);
+    st.power = 1u;
+    st.bright = 40u;
+    st.ct = 2700u;
+    st.hue = 200u;
+    st.sat = 60u;
+    st.color_mode = MCUFW_COLOR_MODE_HSV;
+    strcpy(st.name, "desk-lamp");
+    rc = mcufw_config_save(&st);
+    cfg = mcufw_config_stats();
+    check("config_persist/save_ok",
+          rc == MCUFW_CFG_OK && cfg->save_ok == 1u &&
+          mcufw_config_hal_stub_writes() == 1u &&
+          mcufw_config_hal_stub_valid() == 1);
+
+    mcufw_state_init(&loaded);
+    rc = mcufw_config_load(&loaded);
+    cfg = mcufw_config_stats();
+    check("config_persist/roundtrip_values",
+          rc == MCUFW_CFG_OK && cfg->load_ok == 1u &&
+          loaded.power == 1u && loaded.bright == 40u && loaded.ct == 2700u &&
+          loaded.hue == 200u && loaded.sat == 60u &&
+          loaded.color_mode == MCUFW_COLOR_MODE_HSV &&
+          strcmp(loaded.name, "desk-lamp") == 0);
+    check("config_persist/block_size_48",
+          mcufw_config_encode(&st, block, sizeof(block)) == 48u &&
+          memcmp(block, mcufw_config_hal_stub_bytes(), 48u) == 0);
+
+    /* -- 2. corrupt CRC -> defaults, ZERO foreign fields, ONE log line ---- */
+    raw = mcufw_config_hal_stub_bytes();
+    raw[MCUFW_CONFIG_CRC_OFF] ^= 0x01u;
+    mcufw_state_init(&loaded);
+    rc = mcufw_config_load(&loaded);
+    cfg = mcufw_config_stats();
+    check("config_persist/crc_defaults",
+          rc == MCUFW_CFG_ERR_CRC && cfg->load_defaults == 1u &&
+          cfg->foreign_fields == 0u &&
+          loaded.power == 0u && loaded.bright == 100u && loaded.ct == 4000u &&
+          loaded.hue == 0u && loaded.sat == 0u &&
+          loaded.color_mode == MCUFW_COLOR_MODE_CT && loaded.name[0] == '\0');
+    check("config_persist/crc_one_log",
+          cfg->logs == 1u && strstr(cfg->last_log, "bad-crc") != NULL);
+
+    /* -- 3. broken magic -> defaults -------------------------------------- */
+    mcufw_config_init();
+    mcufw_config_hal_stub_reset();
+    mcufw_config_save(&st);
+    raw = mcufw_config_hal_stub_bytes();
+    raw[0] ^= 0xffu;
+    mcufw_state_init(&loaded);
+    rc = mcufw_config_load(&loaded);
+    cfg = mcufw_config_stats();
+    check("config_persist/magic_defaults",
+          rc == MCUFW_CFG_ERR_MAGIC && cfg->load_defaults == 1u &&
+          cfg->foreign_fields == 0u && loaded.power == 0u &&
+          loaded.bright == 100u && loaded.ct == 4000u &&
+          cfg->logs == 1u && strstr(cfg->last_log, "bad-magic") != NULL);
+
+    /* -- 4. version mismatch -> defaults ---------------------------------- */
+    mcufw_config_init();
+    mcufw_config_hal_stub_reset();
+    mcufw_config_save(&st);
+    raw = mcufw_config_hal_stub_bytes();
+    raw[4] = (uint8_t)(MCUFW_CONFIG_VERSION + 1u);
+    mcufw_state_init(&loaded);
+    rc = mcufw_config_load(&loaded);
+    cfg = mcufw_config_stats();
+    check("config_persist/version_defaults",
+          rc == MCUFW_CFG_ERR_VERSION && cfg->load_defaults == 1u &&
+          cfg->foreign_fields == 0u && loaded.power == 0u &&
+          loaded.bright == 100u && loaded.ct == 4000u &&
+          cfg->logs == 1u && strstr(cfg->last_log, "bad-version") != NULL);
+
+    /* -- 5. boot with power=0: all four channels dark (CMR0 = 0xC350) ----- */
+    {
+        static const mcufw_runtime_io_t io = {
+            host_out_read, host_button_read, host_status_write
+        };
+        const mcufw_runtime_stats_t *rt;
+        mcufw_state_t *gst;
+        uint32_t writes_before;
+        uint32_t cfg_writes_before;
+
+        mcufw_config_init();
+        mcufw_config_hal_stub_reset();
+        mcufw_state_init(&st);
+        st.power = 0u;
+        st.bright = 40u;
+        mcufw_config_save(&st);
+
+        mcufw_pwm_hal_stub_reset();
+        gst = mcufw_state();
+        rc = mcufw_config_boot(gst);
+        mcufw_pwm_invalidate();
+        mcufw_state_apply(gst);
+        check("config_persist/boot_power0_dark",
+              rc == MCUFW_CFG_OK && gst->power == 0u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE1) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR0) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR1) == 0xc350u);
+
+        /* -- 6. idle ticks after a load perform ZERO config writes -------- */
+        mcufw_net_host_reset();
+        mcufw_net_init(mcufw_net_host_transport(), DID_HOST);
+        mcufw_runtime_init(&io);
+        rt = mcufw_runtime_stats();
+        writes_before = mcufw_config_hal_stub_writes();
+        cfg_writes_before = mcufw_config_stats()->hal_writes;
+        for (i = 0; i < 64u; i++)
+            mcufw_runtime_tick();
+        cfg = mcufw_config_stats();
+        check("config_persist/idle_zero_writes",
+              rt->ticks == 64u && rt->config_saves == 0u &&
+              mcufw_config_hal_stub_writes() - writes_before == 0u &&
+              cfg->hal_writes - cfg_writes_before == 0u);
+
+        /* -- 7. one mutation -> exactly one save on the next tick --------- */
+        mcufw_state_set_bright(gst, 55);
+        mcufw_runtime_tick();
+        cfg = mcufw_config_stats();
+        check("config_persist/mutation_one_save",
+              rt->config_saves == 1u &&
+              cfg->hal_writes - cfg_writes_before == 1u &&
+              mcufw_config_hal_stub_writes() == writes_before + 1u);
+        for (i = 0; i < 16u; i++)
+            mcufw_runtime_tick();
+        check("config_persist/no_rewrite_after_save",
+              rt->config_saves == 1u &&
+              mcufw_config_hal_stub_writes() == writes_before + 1u);
+    }
+
+    /* -- 8. boot with power=1 bright=40: CMR0 = 0x7530 (duty 20000) ------- */
+    mcufw_config_init();
+    mcufw_config_hal_stub_reset();
+    mcufw_state_init(&st);
+    st.power = 1u;
+    st.bright = 40u;
+    st.ct = 4000u;
+    st.color_mode = MCUFW_COLOR_MODE_CT;
+    mcufw_config_save(&st);
+    mcufw_pwm_hal_stub_reset();
+    {
+        mcufw_state_t *gst = mcufw_state();
+
+        rc = mcufw_config_boot(gst);
+        mcufw_pwm_invalidate();
+        mcufw_state_apply(gst);
+        check("config_persist/boot_power1_duty",
+              rc == MCUFW_CFG_OK && gst->power == 1u && gst->bright == 40u &&
+              mcufw_pwm_duty(40u) == 20000u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE0) == 0x7530u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_WHITE1) == 0x7530u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR0) == 0xc350u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_COLOR1) == 0xc350u);
+    }
+
+    /* -- 9. name sanitising survives the persist path --------------------- */
+    mcufw_config_init();
+    mcufw_config_hal_stub_reset();
+    mcufw_state_init(&st);
+    mcufw_state_set_name(&st, "a\"b\\c\td");
+    mcufw_config_save(&st);
+    mcufw_state_init(&loaded);
+    rc = mcufw_config_load(&loaded);
+    check("config_persist/name_sanitised",
+          rc == MCUFW_CFG_OK && strcmp(loaded.name, "a_b_c_d") == 0);
+
+    /* -- 10. CRC variant is the MRVL container one (init 0, no final xor).
+     * Independently computed in Python: crc32(b"123456789", init=0,
+     * poly=0xEDB88320 reflected, no final xor) = 0x2dfd2d88.
+     * This differs from standard zlib.crc32 (0xCBF43926) by design. */
+    {
+        static const uint8_t vec[] = "123456789";
+        uint32_t c = mcufw_config_crc32(vec, 9u);
+        check("config_persist/crc_variant_mrvl",
+              c == 0x2dfd2d88u && c != 0xcbf43926u);
+    }
+
+    /* -- 11. identical save is skipped (no flash wear) -------------------- */
+    {
+        uint32_t w = mcufw_config_hal_stub_writes();
+
+        rc = mcufw_config_save(&st);
+        cfg = mcufw_config_stats();
+        check("config_persist/identical_skipped",
+              rc == MCUFW_CFG_OK && cfg->save_skipped == 1u &&
+              mcufw_config_hal_stub_writes() == w);
+    }
+
+    cfg = mcufw_config_stats();
+    printf("  config_persist: loads=%u ok=%u defaults=%u saves=%u ok=%u "
+           "skipped=%u hal_writes=%u foreign_fields=%u logs=%u "
+           "backend_writes=%u\n",
+           cfg->loads, cfg->load_ok, cfg->load_defaults, cfg->saves,
+           cfg->save_ok, cfg->save_skipped, cfg->hal_writes,
+           cfg->foreign_fields, cfg->logs, mcufw_config_hal_stub_writes());
+}
+
 int main(void)
 {
-    printf("=== mcufw phase 3.8 host test ===\n");
+    printf("=== mcufw phase 4 host test ===\n");
 
     printf("\n[crypto + miIO selftest]\n");
     run_selftest();
@@ -786,6 +1001,9 @@ int main(void)
 
     printf("\n[runtime owner / single writer]\n");
     run_runtime_owner();
+
+    printf("\n[persistent config / power-on]\n");
+    run_config_persist();
 
     printf("\n=== TOTAL: %u PASS, %u FAIL ===\n", total_pass, total_fail);
     return total_fail == 0 ? 0 : 1;

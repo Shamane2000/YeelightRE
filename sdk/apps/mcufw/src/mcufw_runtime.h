@@ -49,6 +49,7 @@ typedef struct {
 	uint32_t write_ticks;      /* ticks that observed a dirty pwm       */
 	uint32_t reg_writes_total; /* GPT0 writes attributed to the loop    */
 	uint32_t last_tick_writes; /* writes of the most recent tick        */
+	uint32_t config_saves;     /* ticks that persisted a NEW state (ph.4)*/
 	uint8_t  last_out;         /* last sampled board-out level          */
 	int      last_button;      /* last sampled button level, -1 = none  */
 	char     last_status[MCUFW_RUNTIME_STATUS_MAX];

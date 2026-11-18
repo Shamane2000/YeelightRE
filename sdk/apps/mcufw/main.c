@@ -1,4 +1,4 @@
-/* main.c — mcufw phase 3.6: lamp state model + PWM backend abstraction.
+/* main.c — mcufw phase 4: persistente Config + Power-on-Verhalten.
  *
  * New in 3.6:
  *   - mcufw_state: single lamp state (power/bright/ct/hsv/name/cf/default)
@@ -24,6 +24,8 @@
 #include "mcufw_net.h"
 #include "mcufw_net_lwip.h"
 #include "mcufw_runtime.h"
+#include "mcufw_config.h"
+#include "mcufw_config_hal.h"
 
 #define MCUFW_VERSION "mcufw 0.6-phase3.6"
 
@@ -333,10 +335,18 @@ static void net_cf_proof(void)
  * proves the same path the host test asserts (clamping, toggle, duty word). */
 static void net_state_proof(void)
 {
-	mcufw_state_t *st = mcufw_state();
+	/* Phase 4: die persistente Config wird in den AUTORITATIVEN globalen
+	 * Zustand geladen (vor dem ersten Apply).  Die Clamp-/HSV-Diagnose unten
+	 * arbeitet danach auf einer lokalen KOPIE, damit sie den Power-on-Zustand
+	 * nicht ueberschreibt. */
+	mcufw_state_t proof;
+	mcufw_state_t *st;
 	const mcufw_pwm_stats_t *pwm;
 
-	mcufw_state_init(st);
+	mcufw_config_init();
+	(void)mcufw_config_boot(mcufw_state());
+	proof = *mcufw_state();
+	st = &proof;
 	pwm = mcufw_pwm_stats();
 	uart_puts("state init power ");
 	uart_put_dec(st->power);
@@ -523,6 +533,31 @@ int main(void)
 
 	boot_ramp_sweep();
 
+	/* Phase 4: Power-on-Verhalten.  Die Config ist bereits geladen (vor dem
+	 * ersten Apply); jetzt erst wird sie auf die Kanaele geschrieben.
+	 *   war an  -> wieder an mit letzter Helligkeit/Farbe
+	 *   war aus -> alle vier Kanaele dunkel (CMR0 = Periode)
+	 * Genau EINE UART-Zeile zum Config-Ladeergebnis, keine Retry-Schleife. */
+	{
+		const mcufw_config_stats_t *cfg = mcufw_config_stats();
+
+		uart_puts("config backend ");
+		uart_puts(mcufw_config_hal_name());
+		uart_puts(" load ");
+		uart_put_dec((uint32_t)(cfg->last_status == MCUFW_CFG_OK ? 0u : 1u));
+		uart_puts(" defaults ");
+		uart_put_dec(cfg->load_defaults);
+		uart_puts(" power ");
+		uart_put_dec(mcufw_state()->power);
+		uart_puts(" bright ");
+		uart_put_dec(mcufw_state()->bright);
+		uart_puts("\r\n");
+		if (cfg->last_log[0]) {
+			uart_puts(cfg->last_log);
+			uart_puts("\r\n");
+		}
+	}
+
 	/* Hand the lamp over to the state path: the ramp wrote CMR0 behind the
 	 * PWM backend's back, so forget the programmed command and re-apply the
 	 * authoritative state once.  From here on mcufw_pwm is the only writer. */
@@ -535,5 +570,7 @@ int main(void)
 	uart_put_hex32(mcufw_pwm_cmr0(0));
 	uart_puts("\r\n");
 
+	/* Ab hier ist der State-Pfad der einzige Schreiber; ein Tick speichert
+	 * nur bei einer NEUEN Mutation, ein Idle-Tick schreibt 0 Config-Bytes. */
 	runtime_loop();
 }

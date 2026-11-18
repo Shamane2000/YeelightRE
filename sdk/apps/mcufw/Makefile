@@ -1,4 +1,5 @@
-# mcufw/Makefile -- Phase 3.7: GPT0-Register-Pfad (HAL-Seam host/target).
+# mcufw/Makefile -- Phase 4: persistente Config (Flash/NVRAM-Seam) + Power-on.
+# Register-Pfad aus 3.7 (GPT0 HAL-Seam host/target) bleibt unveraendert.
 #
 # FreeRTOS und lwIP werden aus den SDK-Sources gebaut. Jede Source-Gruppe
 # hat explizite Objekt-Pfade im Build-Verzeichnis, um Kollisionen bei
@@ -59,6 +60,20 @@ LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
              -nostdlib -nostartfiles -Wl,--build-id=none \
              -Wl,-Map=$(TARGET).map -T$(LDSCRIPT)
 
+# --- phase 4: persistent config backend ----------------------------------
+# stub  = deklarierter No-Persist-Stub (Default; ehrlich, kein stilles Tun).
+# flash = echtes flash_drv_* Backend, OPT-IN und erst nach Sektor-Nachweis
+#         auf dem Bench-Traeger freizugeben (Phase 5).
+MCUFW_CONFIG_BACKEND ?= stub
+ifeq ($(MCUFW_CONFIG_BACKEND),flash)
+CONFIG_HAL_OBJ := $(BUILD)/mcufw/mcufw_config_hal_target_flash.o
+else ifeq ($(MCUFW_CONFIG_BACKEND),stub)
+CONFIG_HAL_OBJ := $(BUILD)/mcufw/mcufw_config_hal_target_stub.o
+else
+$(error MCUFW_CONFIG_BACKEND muss stub oder flash sein (aktuell: $(MCUFW_CONFIG_BACKEND)))
+endif
+
+
 # --- mcufw application objects -------------------------------------------
 MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_gpt.o $(BUILD)/mcufw/mcufw_crypto.o \
@@ -70,7 +85,8 @@ MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_state.o $(BUILD)/mcufw/mcufw_pwm.o \
               $(BUILD)/mcufw/mcufw_pwm_hal_target.o \
               $(BUILD)/mcufw/mcufw_net.o $(BUILD)/mcufw/mcufw_net_lwip.o \
-              $(BUILD)/mcufw/mcufw_runtime.o
+              $(BUILD)/mcufw/mcufw_runtime.o \
+              $(BUILD)/mcufw/mcufw_config.o $(CONFIG_HAL_OBJ)
 
 # --- FreeRTOS objects ----------------------------------------------------
 FR_DIR := $(SDK_DIR)/sdk/external/freertos
@@ -116,7 +132,7 @@ $(BUILD)/lwip/init.o: $(LW_DIR)/src/core/init.c | $(BUILD)/lwip
 
 ALL_OBJS := $(MCUFW_OBJS) $(FR_OBJS) $(LW_OBJS) 
 
-.PHONY: all elf container check-vendor check-net check-owner check-owner-elf inspect clean host-test
+.PHONY: all elf container check-vendor check-net check-owner check-owner-elf check-config inspect clean host-test
 
 all: container
 
@@ -295,9 +311,31 @@ check-owner-elf: $(ELF)
 	@$(NM) $(ELF) | grep -q "T mcufw_net_pump_tcp" || { echo "FEHLER: TCP-Pump fehlt im Image"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_net_lwip_bind" || { echo "FEHLER: lwIP-Bindung fehlt im Image"; exit 1; }
 	@! $(NM) $(ELF) | grep -q "mcufw_net_host" || { echo "FEHLER: Host-Transport im Target-Image gelinkt"; exit 1; }
-	@echo "== owner-elf: runtime-owner + beide Netz-Pumps im Image, kein Host-Transport"
+	@$(NM) $(ELF) | grep -q "T mcufw_config_load" || { echo "FEHLER: mcufw_config_load fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_config_save" || { echo "FEHLER: mcufw_config_save fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_config_hal_write" || { echo "FEHLER: Config-Seam mcufw_config_hal_write fehlt"; exit 1; }
+	@! $(NM) $(ELF) | grep -q "mcufw_config_hal_stub_" || { echo "FEHLER: Host-Config-Stub im Target-Image gelinkt"; exit 1; }
+	@echo "== owner-elf: runtime-owner + beide Netz-Pumps + Config-Seam im Image, keine Host-Stubs"
 
-container: $(ELF) check-vendor check-net check-owner check-owner-elf
+# --- phase 4: config backend guard ---------------------------------------
+# Der Default-Build darf KEIN flash_drv_* referenzieren (Sektor unbewiesen).
+# Ein Flash-Build muss sie dagegen wirklich linken -- beides wird geprueft.
+check-config: $(ELF)
+	@if [ "$(MCUFW_CONFIG_BACKEND)" = "flash" ]; then \
+		$(NM) $(ELF) | grep -q "T flash_drv_write" \
+			|| { echo "FEHLER: Backend=flash, aber flash_drv_write nicht gelinkt"; exit 1; }; \
+		echo "== config: Backend flash (flash_drv_* gelinkt, Sektor-Nachweis Phase 5 offen)"; \
+	else \
+		if $(OBJDUMP) -d $(ELF) | grep -A1 "<mcufw_config_hal_read>:" | grep -q "flash_drv_"; then \
+			echo "FEHLER: Backend=stub, aber mcufw_config_hal_read ruft flash_drv_* auf"; exit 1; \
+		fi; \
+		if $(OBJDUMP) -d $(ELF) | grep -A1 "<mcufw_config_hal_write>:" | grep -q "flash_drv_"; then \
+			echo "FEHLER: Backend=stub, aber mcufw_config_hal_write ruft flash_drv_* auf"; exit 1; \
+		fi; \
+		echo "== config: Backend stub-no-persist (deklariert, kein Flash-Zugriff im Config-Pfad)"; \
+	fi
+
+container: $(ELF) check-vendor check-net check-owner check-owner-elf check-config
 	@test -x $(AXF2FW) || { echo "FEHLER: $(AXF2FW) fehlt"; exit 1; }
 	@rm -f $(CONTAINER)
 	cd $(BUILD) && $(AXF2FW) mcufw.elf mcufw_MRVL.bin
@@ -312,6 +350,7 @@ HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
              $(SRC)/mcufw_pwm_hal_host.c \
              $(SRC)/mcufw_net.c $(SRC)/mcufw_net_host.c \
              $(SRC)/mcufw_runtime.c \
+             $(SRC)/mcufw_config.c $(SRC)/mcufw_config_hal_host.c \
              $(ROOT)/host_test.c
 
 host-test:
