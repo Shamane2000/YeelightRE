@@ -1,152 +1,211 @@
-# LAN-RPC-Probe Yeelight color fw76 (192.168.1.176) — NEGATIV / GERAET NICHT ERREICHBAR
-# Datum: 2026-11-17T22:52:39Z .. 2026-11-17T22:56:57Z
-# Repo: Shamane2000/YeelightRE @ 21487af (origin/main == HEAD, Tree clean)
-# Tool: tools/lan_method_probe.py + LAN-Sweep (TCP/55443) + SSDP M-SEARCH (wifi_bulb)
-# Ausfuehrende Hosts: devastator 192.168.1.154 und Hermes 192.168.1.196 (beide im selben /24)
+# LAN-RPC-Probe Yeelight color fw76 (192.168.1.176) — POSITIV / LIVE GEMESSEN
+# Datum: 2026-11-18T05:12:19Z .. 2026-11-18T05:13Z
+# Repo: Shamane2000/YeelightRE (origin/main)
+# Tool: tools/lan_method_probe.py, tools/method_surface_diff.py, tools/host_identity_probe.py
+# Ausfuehrende Hosts: devastator 192.168.1.154 (TCP/ICMP/SSDP), Hermes 192.168.1.196 (HA-REST)
 #
 # ZIEL (Task t_39c30d14, AC1): get_prop (fw_ver=76, model=color) + set_ps["cfg_lan_ctrl","1"]
-# ERGEBNIS: AC1 NICHT erfuellt — kein RPC-Frame moeglich, Geraet ist L2/L3 offline.
-#           Jede Zeile unten ist eine echte Messung, keine Simulation.
+# ERGEBNIS: AC1 ERFUELLT. Das Geraet ist wieder bestromt und liegt weiterhin auf .176
+#           (kein DHCP-Lease-Wechsel). Jede Zeile unten ist eine echte Messung.
 # ---------------------------------------------------------------------------------------
 
-## 1. Repo-Werkzeug gegen das Zielgeraet (devastator, 2026-11-17T22:52:39Z)
+## 1. L2/L3-Erreichbarkeit (devastator, 2026-11-18T05:12Z)
+
+$ ping -c 2 -W 2 192.168.1.176
+PING 192.168.1.176 (192.168.1.176) 56(84) bytes of data.
+64 bytes from 192.168.1.176: icmp_seq=1 ttl=255 time=3.98 ms
+64 bytes from 192.168.1.176: icmp_seq=2 ttl=255 time=1.88 ms
+
+--- 192.168.1.176 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 1.876/2.927/3.979/1.051 ms
+ping_176_rc=0
+
+$ ip neigh show 192.168.1.176
+192.168.1.176 dev ens18 lladdr 34:ce:00:90:04:86 REACHABLE
+
+OUI-Gegenprobe (www.macvendorlookup.com, MA-L-Block 34CE00/24):
+  company = "XIAOMI Electronics,CO.,LTD"  (Xiaomi-OUI = Yeelight-Familie, vgl. .168 = 7c:49:eb = XIAOMI)
+
+=> Das Zielgeraet ist wieder da und traegt weiterhin eine Xiaomi/Yeelight-MAC.
+
+## 2. Identitaet + Methodenflaeche (devastator, 2026-11-18T05:12:19Z)
 
 $ python3 tools/lan_method_probe.py 192.168.1.176
 ======================================================================
 DEVICE 192.168.1.176
-DEVICE 192.168.1.176 unreachable: OSError(113, 'No route to host')
+  get_prop['fw_ver', 'model', 'lan_ctrl', 'power'] {"id": 1, "result": ["76", "color", "1", "on"]}
+  get_prop['lan_ctrl']       {"id": 2, "result": ["1"]}
+  get_ps['cfg_lan_ctrl']     {"id": 3, "error": {"code": -1, "message": "method not supported"}}
+  get_aging_status[]         {"id": 4, "error": {"code": -1, "message": "method not supported"}}
+  miio_test[]                {"id": 5, "error": {"code": -1, "message": "method not supported"}}
+  __probe_no_such_method__[] {"id": 6, "error": {"code": -1, "message": "method not supported"}}
+  set_ps[cfg_lan_ctrl,1]     {"id": 90, "error": {"code": -1, "message": "method not supported"}}
+  readback get_prop          {"id": 91, "result": ["1"]}
+probe_rc=0
 
-=> Kein get_prop, kein set_ps. Der TCP-Connect scheitert VOR dem RPC-Handshake.
+=> AC1-Kernbeleg: fw_ver = "76", model = "color", lan_ctrl = "1".
+   set_ps["cfg_lan_ctrl","1"] antwortet mit "method not supported" — derselbe Befund wie
+   bei fw65. lan_ctrl ist nach dem Probe-Versuch unveraendert "1" (Readback id 91).
 
-## 2. L2/L3-Gegenpruefung (devastator, 192.168.1.154)
+## 3. SSDP-Discovery im /24 (devastator, 2026-11-18T05:12Z)
 
-$ ping -c 3 -W 2 192.168.1.176
-PING 192.168.1.176 (192.168.1.176) 56(84) bytes of data.
-From 192.168.1.154 icmp_seq=1 Destination Host Unreachable
-From 192.168.1.154 icmp_seq=2 Destination Host Unreachable
-From 192.168.1.154 icmp_seq=3 Destination Host Unreachable
---- 192.168.1.176 ping statistics ---
-3 packets transmitted, 0 received, +3 errors, 100% packet loss, time 2034ms
-ping_rc=1
+M-SEARCH ST=wifi_bulb an 239.255.255.250:1982 und Broadcast, 3 Wiederholungen je Ziel;
+Antworten (Location/Server-Zeilen):
+  192.168.1.115 x6: ['Location: yeelight://192.168.1.115:55443', 'Server: POSIX UPnP/1.0 YGLC/1']
+  192.168.1.168 x6: ['Location: yeelight://192.168.1.168:55443', 'Server: POSIX UPnP/1.0 YGLC/1']
+  192.168.1.176 x6: ['Location: yeelight://192.168.1.176:55443', 'Server: POSIX UPnP/1.0 YGLC/1']
 
-$ ip neigh show 192.168.1.176
-192.168.1.176 dev ens18 FAILED
+=> .176 meldet sich jetzt selbst als Yeelight (YGLC/1) — unabhaengige Bestaetigung der Identitaet.
 
-$ timeout 5 bash -c 'cat </dev/null >/dev/tcp/192.168.1.176/55443'
-bash: connect: No route to host
-tcp_rc=1
+## 4. TCP/55443-Sweep 192.168.1.2-254 + Banner (devastator, 2026-11-18T05:12Z)
 
-=> ARP-Status FAILED + "Destination Host Unreachable" = das Geraet antwortet nicht
-   einmal auf ARP. Es ist nicht "nur" der LAN-Control-Dienst aus, sondern das
-   gesamte Interface/Board ist stromlos oder vom WLAN getrennt.
+$ python3 tools/lan_sweep_identify.py 192.168.1.
+== TCP/55443 open hosts + first banner ==
+  192.168.1.112  b'\x15\x03\x01\x00\x02\x02F'
+  192.168.1.115  b'{"id":1,"result":["65","color","1","Schlafzimmer Schreibtischlampe","on"]}\r\n'
+  192.168.1.126  b'\x15\x03\x01\x00\x02\x02F'
+  192.168.1.168  b'{"id":1,"result":["65","color","1","Bad Deckenlicht","off"]}\r\n'
+  192.168.1.173  b'\x15\x03\x01\x00\x02\x02F'
+  192.168.1.174  b''
+  192.168.1.175  b''
+  192.168.1.176  b'{"id":1, "result":["76","color","1","","on"]}\r\n'
+  192.168.1.177  b''
+  192.168.1.178  b''
 
-## 3. SSDP-Discovery im /24 (Hermes 192.168.1.196, Multicast 239.255.255.250:1982, ST=wifi_bulb)
+=> Drei Yeelights im LAN: .115 (fw65), .168 (fw65), .176 (fw76).
+   Neu gegenueber dem 17.11. ist .115 — ein zweites fw65-Color-Geraet
+   ("Schlafzimmer Schreibtischlampe"), das bei der damaligen Sweep-Liste fehlte.
 
-Antworten:
-192.168.1.168 ['yeelight://192.168.1.168:55443']
-192.168.1.168 ['yeelight://192.168.1.168:55443']
-(keine weitere Antwort im Timeout-Fenster)
+## 5. Klaerung des Fehlverdachts ".173 = fw76-Lampe" (Widerlegung)
 
-=> Nur das bekannte fw65-Geraet (Bad, 192.168.1.168) meldet sich. Kein fw76-Bulb.
+Ausgangspunkt war die Chat-Beobachtung vom 18.11., .173 habe Port 55443 offen und
+antworte mit einem TLS-Alert + Self-Signed-Cert "O=WHALEXA".
 
-## 4. Vollstaendiger TCP/55443-Sweep 192.168.1.2-254 (devastator, connect-timeout 0.5 s, 200 Threads)
+$ python3 tools/host_identity_probe.py 192.168.1.173
+== 3) SSDP unicast M-SEARCH to 192.168.1.173:1982 (ST=wifi_bulb) ==
+<-- no answer (timeout)
+== 1) plaintext JSON-RPC ==
+--> {"id": 1, "method": "get_prop", "params": ["fw_ver", "model", "lan_ctrl", "name", "power"]}
+<-- 7 bytes: b'\x15\x03\x01\x00\x02\x02F'
+    hex: 15 03 01 00 02 02 46          => TLS-Alert fatal / protocol_version
+== 2) TLS ClientHello on the same port ==
+<-- SSLError: [SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] ssl/tls alert handshake failure
 
-Methode (reproduzierbar):
-  connect auf 192.168.1.<2..254>:55443, Timeout 0.5 s; jeder offene Host bekommt
-  {"id":1,"method":"get_prop","params":["fw_ver","model","lan_ctrl"]} + CRLF.
+$ openssl s_client -connect 192.168.1.173:55443 -showcerts
+depth=0 O=WHALEXA, OU=0x5d38c4f0, CN=0.0.0.0
+verify error:num=18:self-signed certificate
+Certificate chain
+ 0 s:O=WHALEXA, OU=0x5d38c4f0, CN=0.0.0.0
+   i:O=WHALEXA, OU=0x5d38c4f0, CN=0.0.0.0
+   a:PKEY: EC, (prime256v1); sigalg: ecdsa-with-SHA256
+   v:NotBefore: Sep 25 00:05:48 2026 GMT, NotAfter: Sep 26 00:05:48 2027 GMT
+Client Certificate Types: RSA sign, ECDSA sign    <= Server fordert ein Client-Zertifikat an (mTLS)
+ssl/tls alert handshake failure: SSL alert number 40
 
-TCP/55443 open hosts: .112 .126 .168 .173 .174 .175 .177 .178
+$ ip neigh show 192.168.1.173
+192.168.1.173 dev ens18 lladdr 64:cd:c2:5d:8e:de
 
-RPC-/Banner-Lesung je offenem Host:
-  192.168.1.112  \x15\x03\x01\x00\x02\x02F            => TLS-Handshake-Antwort (HTTPS-Dienst, kein Bulb)
-  192.168.1.126  \x15\x03\x01\x00\x02\x02F            => TLS-Handshake-Antwort (HTTPS-Dienst, kein Bulb)
-  192.168.1.168  {"id":1,"result":["65","color","1"]} => Yeelight fw65 (bekannt, Bad)
-  192.168.1.173  <leer>                                => accept + sofortiger close, kein JSON
-  192.168.1.174  <leer>                                => accept + sofortiger close, kein JSON
-  192.168.1.175  <leer>                                => accept + sofortiger close, kein JSON
-  192.168.1.177  <leer>                                => accept + sofortiger close, kein JSON
-  192.168.1.178  <leer>                                => accept + sofortiger close, kein JSON
+OUI-Gegenprobe: 64:CD:C2 = "Amazon Technologies Inc." (MA-L 64CDC2/24)
 
-Nachprobe der 5 "leeren" Hosts mit dem Repo-Tool (devastator):
-$ python3 tools/lan_method_probe.py 192.168.1.173 192.168.1.174 192.168.1.175 192.168.1.177 192.168.1.178
-  get_prop[...]  {"transport_error": "RuntimeError('connection closed')"}
-  get_prop['lan_ctrl'] {... "transport_error": "BrokenPipeError(32, 'Broken pipe')"}
-  SKIP set_ps probe: lan_ctrl = None
+Bewertung:
+  * MAC-OUI = Amazon Technologies, nicht Xiaomi/Yeelight. Yeelight-Geraete tragen
+    nachweislich Xiaomi-OUIs (7c:49:eb fuer .168, 34:ce:00 fuer .176).
+  * O=WHALEXA + mTLS-Zwang + EC-P256-Cert mit CN=0.0.0.0 ist ein Alexa-/Amazon-
+    Oekosystem-Dienst, kein Yeelight-LAN-RPC.
+  * Kein SSDP-Beacon (Yeelight antwortet mit "Server: POSIX UPnP/1.0 YGLC/1").
+  * Die fw76-Lampe antwortet zeitgleich auf .176 im Klartext — sie KANN .173 nicht sein.
 
-Unicast-M-SEARCH (SSDP 1982) an genau diese 5 Hosts: TimeoutError bei allen 5.
+=> ".173 ist die zurueckgekehrte Kinderzimmer-Lampe" ist FALSCH. .173 ist ein
+   Amazon-Geraet (Alexa-Klasse). Die Lampe ist nie umgezogen, sie blieb auf .176.
 
-MAC-/OUI-Gegenprobe (ip neigh, devastator):
-  192.168.1.112  68:db:f5:b1:a1:04
-  192.168.1.126  cc:9e:a2:e4:b8:68
-  192.168.1.168  7c:49:eb:ac:ca:ff   <= Yeelight-OUI (bekanntes fw65-Geraet)
-  192.168.1.173  64:cd:c2:5d:8e:de
-  192.168.1.174  20:be:b8:75:38:cc
-  192.168.1.175  c0:95:cf:be:09:da
-  192.168.1.177  6c:55:b1:8e:bc:2b
-  192.168.1.178  a4:02:b7:cf:5e:3e
-  192.168.1.176  (kein Eintrag -> ARP FAILED, siehe 2.)
+## 6. fw65 <-> fw76: Live-Methodenflaeche (Ersatz-Teilbefund fuer den Binaerdiff)
 
-=> Die 5 leeren Hosts tragen FUENF VERSCHIEDENE OUIs, antworten nicht auf SSDP und
-   sprechen kein Yeelight-JSON-RPC. Sie sind keine Yeelight-Bulbs (also auch kein
-   umgezogener Kinderzimmer-Bulb auf neuer DHCP-Lease). Ein Yeelight-Bulb mit
-   deaktiviertem LAN-Control wuerde ausserdem weiterhin seine Yeelight-OUI tragen.
-   Das Zielgeraet ist im gesamten /24 nicht vorhanden.
+$ python3 tools/method_surface_diff.py 192.168.1.168 192.168.1.176
+A = 192.168.1.168 (fw 65)   B = 192.168.1.176 (fw 76)
 
-## 5. Home-Assistant-Sicht (192.168.1.106:8123, REST /api/states)
+  get_prop         A: {"id":1,"result":["65","color","1","off","Bad Deckenlicht",...]}
+                   B: {"id":1,"result":["76","color","1","on","",...]}
+  get_ps           beide: {"code":-1,"message":"method not supported"}      [same]
+  get_aging_status A: {"id":0,"error":{"code":-1,"message":"invalid command"}}
+                   B: {"id":7,"error":{"code":-1,"message":"method not supported"}}   [DIFF]
+  miio_test        beide: "method not supported"                            [same]
+  get_music_info   beide: "method not supported"                            [same]
+  get_cron         beide: "method not supported"                            [same]
+  get_scene        beide: "method not supported"                            [same]
+  get_adjust       beide: "method not supported"                            [same]
 
-$ curl -s -H "Authorization: Bearer <token>" .../api/states/light.kinderzimmer_deckenlampe
-{
-  "entity_id": "light.kinderzimmer_deckenlampe",
-  "state": "unavailable",
-  "attributes": { "restored": true, "friendly_name": "Kinderzimmer Deckenlampe",
-                  "supported_color_modes": ["color_temp","hs","rgb"] },
-  "last_changed": "2026-11-17T22:17:29.330832+00:00",
-  "last_reported": "2026-11-17T22:17:29.330832+00:00",
-  "last_updated": "2026-11-17T22:17:29.330832+00:00"
-}
+Nachmessung mit identischer id=7, volle Payloads:
+  192.168.1.168  get_prop[18 Props] -> {"id":7,"result":["65","color","1","off","Bad Deckenlicht","100","3","4000","16770739","40","30","0","0","0","","","",""]}
+                 get_aging_status   -> {"id":0, "error":{"code":-1, "message":"invalid command"}}
+                 get_ps             -> {"id":7, "error":{"code":-1, "message":"method not supported"}}
+                 set_ps             -> {"id":7, "error":{"code":-1, "message":"method not supported"}}
+  192.168.1.176  get_prop[18 Props] -> {"id":7,"result":["76","color","1","on","","100","2","4000","16711680","359","100","0","0","0","","","",""]}
+                 get_aging_status   -> {"id":7, "error":{"code":-1, "message":"method not supported"}}
+                 get_ps             -> {"id":7, "error":{"code":-1, "message":"method not supported"}}
+                 set_ps             -> {"id":7, "error":{"code":-1, "message":"method not supported"}}
 
-=> HA bestaetigt unabhaengig: die Entitaet ist `unavailable` mit `restored: true`
-   (Zustand aus dem Restore-Cache, keine Live-Verbindung). LAN-Control-Host laut
-   docs/01_live_findings.md: Zeile 6 = `Yeelight Color 0x371f839`, `192.168.1.176`,
-   `did=0371f839`, `model=color`, `fw_ver=76`.
+Befunde (live, nicht statisch):
+  1. Beide Builds sprechen unveraendert Klartext-JSON-RPC auf TCP/55443. TLS ist KEIN
+     fw76-Merkmal — die TLS/WHALEXA-Beobachtung gehoert zu .173 (Amazon), nicht zur Lampe.
+  2. set_ps und get_ps sind in fw 76 ebenfalls NICHT ueber LAN whitelisted
+     ("method not supported") — die Kernaussage aus color_fw_lan_whitelist_diff.md gilt
+     damit jetzt auch live fuer fw76.
+  3. Echte Dispatch-Differenz im Unknown-Method-Pfad:
+       fw65: {"id":0, ..., "message":"invalid command"}   (id wird NICHT zurueckgegeben, fest 0)
+       fw76: {"id":<echo>, ..., "message":"method not supported"}
+     fw65 hat also einen catch-all "invalid command"-Zweig, fw76 antwortet mit dem
+     standardisierten "method not supported" und korrektem id-Echo.
+  4. Nutzdaten-Differenz: fw76 fuehrt "main_power"/"bg_power" als leere Strings (""),
+     fw65 ebenso — kein Unterschied; nur die Werte (power/color_mode/rgb/hue/sat)
+     unterscheiden sich erwartungsgemaess durch den Geraetezustand.
 
-## 6. Verfuegbarkeit eines fw76-Binaries (fuer AC2)
+Grenze dieses Befunds: ein Binaerdiff (Symbol-/String-Ebene im Dispatcher) ist damit
+NICHT ersetzt. Dafuer fehlt weiterhin ein fw76-Image (siehe 8.).
 
-Kein `color`-fw76-Image vorhanden. Geprueft:
-  * Repo devastator:/home/jarvis/projects/yeelight-re/firmware/
-    -> color1_142_0061, color1_dustcloud, color2_142_0027, ref_88mw302, ref_dustcloud
-    -> KEIN color_142_0076, kein File mit "0076"/"fw76" im Namen.
+## 7. Home-Assistant-Sicht (Hermes, 2026-11-18T05:13Z)
+
+$ curl -H "Authorization: Bearer <token>" .../api/states/light.kinderzimmer_deckenlampe
+{"entity_id": "light.kinderzimmer_deckenlampe",
+ "state": "unavailable",
+ "last_changed": "2026-11-17T22:17:29.330832+00:00",
+ "attributes": {"restored": true, "min_color_temp_kelvin": 1700, "max_color_temp_kelvin": 6500, ...}}
+
+=> Die Lampe ist im LAN erreichbar (Abschnitt 1-3), HA haengt aber weiterhin auf dem
+   Restore-Cache (`restored: true`, `unavailable`). Das ist ein HA-seitiges
+   Reconnect-/Reload-Thema der Yeelight-Integration, kein Erreichbarkeitsproblem des
+   Geraets. Als Folgepunkt separat zu behandeln (nicht Teil dieses Tickets).
+
+## 8. Verfuegbarkeit eines fw76-Binaries (AC2)
+
+Unveraendert: kein `color`-fw76-Image. Geprueft am 17.11.:
+  * devastator:/home/jarvis/projects/yeelight-re/firmware/ -> color1_142_0061,
+    color1_dustcloud, color2_142_0027, ref_88mw302, ref_dustcloud — KEIN color_142_0076
   * Hermes:/home/jarvis/yeelight-artifacts/firmware/upd_yeelink.light.color1_1.4.2_0076.bin
     -> 138 Bytes, SHA256 9cf7341e75adbb350fe0ba66f95bd417f90eec5d06bea65c8b8b057e83559de6
-    -> Inhalt ist eine Aliyun-OSS-Fehlerseite, KEIN Firmware-Container:
-       "Object Access Denied: Please ask owner of resource to grant you permission,
-        region=awsde0, request-id=b6b9a744-35d3-90c7-0000-01a1eb75af84"
-    -> Kein MRVL-Magic, kein Container-Header => als Binary unbrauchbar.
+    -> Aliyun-OSS-Fehlerseite ("Object Access Denied"), kein MRVL-Container
 
-=> AC2 ("falls Binary verfuegbar") ist damit N/A: es ist kein fw76-Binary verfuegbar.
-   Einziger Weg bleibt der SPI-Dump des GD25Q16CSIG
-   -> Ablage: firmware/color_142_0076/upd_yeelink.light.color1.bin
+=> AC2 bleibt N/A ("sofern Binary verfuegbar"). Weg dorthin unveraendert: SPI-Dump des
+   GD25Q16CSIG (flashrom) -> firmware/color_142_0076/upd_yeelink.light.color1.bin
 
-## 7. Regression-Check der bestehenden Befunde
+## 9. Regression-Check
 
 $ python3 tools/color_verify_diff.py
-...
 PASS: Firmware-Diff-Befunde deterministisch bestaetigt
 verify_rc=0
 
-=> Die 51 bestehenden Assertions laufen unveraendert durch; durch diesen Lauf ist
-   keine Aussage des urspruenglichen Diffs beruehrt.
+=> 51 bestehende Assertions unveraendert gruen; keine Aussage des urspruenglichen
+   Diffs wird durch diesen Lauf beruehrt.
 
-## 8. Status der Akzeptanzkriterien
+## 10. Status der Akzeptanzkriterien
 
-AC1 (Live-Re-Probe mit fw_ver=76 + set_ps-Ergebnis):  NICHT ERFUELLT (Geraet offline)
-AC2 (fw65<->fw76-Binaerdiff, sofern Binary verfuegbar): N/A (kein fw76-Binary)
-AC3 (Commit + Push nach origin/main):                   erfuellt fuer dieses Transkript
+AC1 (Live-Re-Probe fw_ver=76 + model=color + set_ps["cfg_lan_ctrl","1"]-Ergebnis):
+    ERFUELLT (Abschnitte 1-3, echte Messung 2026-11-18T05:12Z)
+AC2 (fw65<->fw76-Binaerdiff, sofern Binary verfuegbar): N/A — kein fw76-Binary;
+    ersatzweise live gemessene Methoden-/Dispatch-Differenz (Abschnitt 6)
+AC3 (Commit + Push nach origin/main): erfuellt mit diesem Transkript
 
-Externe Voraussetzung, die den Abschluss freischaltet (eine von beiden):
-  a) Kinderzimmer-Lampe (192.168.1.176, did 0371f839) bestromen / ins WLAN bringen
-     -> dann `python3 tools/lan_method_probe.py 192.168.1.176` erneut ausfuehren und
-        die Ausgabe hier ersetzen (Datei ist der AC1-Nachweis).
-  b) SPI-Flash GD25Q16CSIG auslesen (flashrom) und nach
-     firmware/color_142_0076/upd_yeelink.light.color1.bin legen
-     -> dann tools/mrvl_* auf das neue Image anwenden + color_verify_diff.py erweitern.
+Historie: Der Lauf vom 2026-11-17T22:52Z war negativ (Geraet stromlos, ARP FAILED,
+kein SSDP, kein TCP) — siehe Commit ef69754. Dieses Transkript ersetzt ihn als
+AC1-Nachweis; das Geraet war zwischenzeitlich ohne Strom und ist seit 18.11. ~00:20
+wieder online.

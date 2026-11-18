@@ -240,3 +240,78 @@ MRVL-Container. Damit bleibt §8 Punkt 2 (SPI-Dump `GD25Q16CSIG` →
 PASS) nach diesem Lauf unverändert. Die Kernaussage aus §4/§7 (kein Build hat
 `set_ps`/`get_ps`/`cfg_lan_ctrl` über LAN whitelisted) wird durch den Nachtrag weder
 gestützt noch widerlegt — für fw 76 bleibt sie **statisch begründet, nicht live gemessen**.
+
+## 11. Nachtrag 2 — fw 76 **live** gemessen (Task `t_39c30d14`, 2026-11-18)
+
+**Dieser Abschnitt ersetzt den Negativ-Nachtrag aus §10.** §10 bleibt als Zeitzeuge stehen
+(Stand 2026-11-17T22:52Z: Gerät stromlos, ARP FAILED, kein SSDP, kein TCP/55443). Frank hat die
+Kinderzimmer-Lampe am 18.11. gegen 00:20 bestromt; sie ist **auf derselben IP `.176`**
+zurückgekommen (kein DHCP-Lease-Wechsel). Volltranskript der Messung:
+`analysis/lan_probe_fw76_192.168.1.176.txt`.
+
+### 11.1 Identität (unabhängig dreifach belegt)
+
+| Nachweis | Messwert |
+| :-- | :-- |
+| `get_prop` (devastator, 2026-11-18T05:12:19Z) | `{"id": 1, "result": ["76", "color", "1", "on"]}` |
+| SSDP `ST: wifi_bulb` | `Location: yeelight://192.168.1.176:55443`, `Server: POSIX UPnP/1.0 YGLC/1` |
+| MAC / OUI | `34:ce:00:90:04:86` → `XIAOMI Electronics,CO.,LTD` (MA-L `34CE00/24`) |
+
+### 11.2 AC1 — `set_ps["cfg_lan_ctrl","1"]` auf fw 76
+
+```
+$ python3 tools/lan_method_probe.py 192.168.1.176
+  get_prop['fw_ver', 'model', 'lan_ctrl', 'power'] {"id": 1, "result": ["76", "color", "1", "on"]}
+  get_ps['cfg_lan_ctrl']     {"id": 3, "error": {"code": -1, "message": "method not supported"}}
+  set_ps[cfg_lan_ctrl,1]     {"id": 90, "error": {"code": -1, "message": "method not supported"}}
+  readback get_prop          {"id": 91, "result": ["1"]}      # lan_ctrl unverändert
+```
+
+⇒ **Die Kernaussage aus §4/§7 (kein Build hat `set_ps`/`get_ps`/`cfg_lan_ctrl` über LAN
+whitelisted) ist für fw 76 jetzt live bestätigt**, nicht mehr nur statisch begründet.
+`lan_ctrl` bleibt nach dem Probe-Versuch unverändert `"1"` (idempotenter Readback).
+
+### 11.3 fw 65 ↔ fw 76 — live gemessene Protokoll-Differenz
+
+`tools/method_surface_diff.py` (read-only, gleiche Payloads, gleiche `id`) gegen
+`192.168.1.168` (fw 65) und `192.168.1.176` (fw 76):
+
+| Methode | fw 65 | fw 76 | Diff |
+| :-- | :-- | :-- | :-- |
+| `get_prop` | `["65","color","1","off","Bad Deckenlicht",…]` | `["76","color","1","on","",…]` | Gerätezustand |
+| `get_ps` | `method not supported` | `method not supported` | — |
+| `set_ps` | `method not supported` | `method not supported` | — |
+| `get_aging_status` (unknown method) | `{"id":0,…,"message":"invalid command"}` | `{"id":7,…,"message":"method not supported"}` | **Dispatch** |
+| `miio_test`, `get_music_info`, `get_cron`, `get_scene`, `get_adjust` | `method not supported` | `method not supported` | — |
+
+Zwei belegte Unterschiede:
+
+1. **Unknown-Method-Pfad:** fw 65 antwortet mit einem catch-all `"invalid command"` und
+   setzt die `id` hart auf `0` (die Request-`id` wird nicht zurückgegeben); fw 76 antwortet
+   mit dem standardisierten `"method not supported"` und korrektem `id`-Echo.
+2. **Transport unverändert:** beide Builds sprechen Klartext-JSON-RPC auf TCP/55443.
+   **TLS ist kein fw 76-Merkmal.** Die TLS-/`WHALEXA`-Beobachtung gehört zu `192.168.1.173`,
+   das ist ein Amazon-Gerät (`64:cd:c2:5d:8e:de` → `Amazon Technologies Inc.`, mTLS-Zwang,
+   Cert `O=WHALEXA, OU=0x5d38c4f0, CN=0.0.0.0`, kein SSDP) — **nicht** die Lampe.
+   Begründete Widerlegung im Transkript, Abschnitt 5.
+
+Grenze: Das ist ein **Live-Verhaltensdiff, kein Binärdiff.** Symbol-/String-Ebene des
+Dispatchers bleibt für fw 76 ungeprüft (kein Image, siehe 11.4).
+
+### 11.4 AC2 — fw76-Binary weiterhin nicht verfügbar
+
+Unverändert: `firmware/` enthält `color1_142_0061`, `color1_dustcloud`, `color2_142_0027`,
+`ref_88mw302`, `ref_dustcloud` — kein `color_142_0076`. Die einzige Datei mit fw76 im Namen
+(`upd_yeelink.light.color1_1.4.2_0076.bin`) ist 138 Bytes
+(SHA256 `9cf7341e75adbb350fe0ba66f95bd417f90eec5d06bea65c8b8b057e83559de6`) und enthält
+eine Aliyun-OSS-Fehlerseite („Object Access Denied“, `region=awsde0`). ⇒ AC2 bleibt
+formell N/A („sofern Binary verfügbar“). Einziger Weg: SPI-Dump des `GD25Q16CSIG`
+(flashrom) → `firmware/color_142_0076/upd_yeelink.light.color1.bin`.
+
+### 11.5 Nebenbefund (nicht Teil dieses Tickets)
+
+`light.kinderzimmer_deckenlampe` steht in Home Assistant trotz erreichbarem Gerät weiter
+auf `unavailable` (`restored: true`, `last_changed 2026-11-17T22:17:29Z`) — HA-seitiges
+Reconnect-/Reload-Thema der Yeelight-Integration, kein Netzproblem.
+
+Regression: `python3 tools/color_verify_diff.py` → `rc=0`, 51 Assertions PASS.
