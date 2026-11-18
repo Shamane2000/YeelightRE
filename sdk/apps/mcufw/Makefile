@@ -11,6 +11,13 @@ CC        := $(CROSS)gcc
 OBJCOPY   := $(CROSS)objcopy
 SIZE      := $(CROSS)size
 READELF   := $(CROSS)readelf
+NM        := $(CROSS)nm
+
+# Vendor SDK archive: mcufw pulls GPIO_PinMuxFun/GPIO_PinModeConfig from
+# mw300_pinmux.o (zero undefined symbols) so the pinmux path runs through real
+# vendor code.  The archive also ships ttcp.o with its own main(), so it is
+# linked as a plain archive (members pulled on demand), never --whole-archive.
+VENDOR_LIB := $(SDK_DIR)/sdk/libs/libwmsdk.a
 
 LDSCRIPT  := $(ROOT)/mw300_min.ld
 TARGET    := $(BUILD)/mcufw
@@ -36,7 +43,7 @@ LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -mabi=aapcs \
 SRCS      := $(SRC)/startup.c $(SRC)/main.c
 OBJS      := $(BUILD)/startup.o $(BUILD)/main.o
 
-.PHONY: all elf container inspect clean
+.PHONY: all elf container check-vendor inspect clean
 
 all: container
 
@@ -49,13 +56,25 @@ $(BUILD)/%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(ELF): $(OBJS) $(LDSCRIPT)
-	$(CC) $(LDFLAGS) $(OBJS) -lgcc -o $@
+	$(CC) $(LDFLAGS) $(OBJS) $(VENDOR_LIB) -lgcc -o $@
 	@echo "== elf layout"
 	@$(READELF) -h $(ELF) | grep -E 'Entry point|Machine|Flags'
 	@$(READELF) -lW $(ELF) | grep -E '^  LOAD|Type' | sed 's/^/   /'
 	@$(SIZE) -A $(ELF) | grep -E '^\.(init|text|data|bss)'
 
-container: $(ELF)
+# Hard proof that the vendor archive is really in the image: the pinmux
+# accessor must be defined (T) and the archive member must not drag in a
+# second main().
+check-vendor: $(ELF)
+	@$(NM) $(ELF) | grep -q "T GPIO_PinMuxFun" \
+		|| { echo "FEHLER: GPIO_PinMuxFun aus libwmsdk.a nicht gelinkt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T GPIO_PinModeConfig" \
+		|| { echo "FEHLER: GPIO_PinModeConfig aus libwmsdk.a nicht gelinkt"; exit 1; }
+	@test "$$($(NM) $(ELF) | grep -c "^[0-9a-f]* T main$$")" = "1" \
+		|| { echo "FEHLER: mehrdeutige main()-Definition im Image"; exit 1; }
+	@echo "== vendor link: $$($(NM) $(ELF) | grep -c " T GPIO_") Symbole aus $(notdir $(VENDOR_LIB))"
+
+container: $(ELF) check-vendor
 	@test -x $(AXF2FW) || { echo "FEHLER: $(AXF2FW) fehlt -- 'make -C .. bootstrap'"; exit 1; }
 	@rm -f $(CONTAINER)
 	cd $(BUILD) && $(AXF2FW) mcufw.elf mcufw_MRVL.bin
