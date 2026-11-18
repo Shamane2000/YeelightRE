@@ -84,6 +84,8 @@ void mcufw_state_apply(mcufw_state_t *st)
 	}
 	if (st->color_mode == MCUFW_COLOR_MODE_HSV)
 		mcufw_pwm_hsv(st->hue, st->sat, st->bright);
+	else if (st->color_mode == MCUFW_PWM_MODE_RGB)
+		mcufw_pwm_rgb((uint8_t)((st->hue >> 8) & 0xFF), (uint8_t)(st->hue & 0xFF), st->sat);
 	else
 		mcufw_pwm_set(st->bright, st->ct);
 }
@@ -144,6 +146,21 @@ int mcufw_state_set_hsv(mcufw_state_t *st, long hue, long sat, long val)
 	st->color_mode = MCUFW_COLOR_MODE_HSV;
 	st->mutations++;
 	mcufw_state_apply(st);
+	return 0;
+}
+
+int mcufw_state_set_rgb(mcufw_state_t *st, long r, long g, long b)
+{
+	if (!st)
+		return -1;
+
+	uint8_t rc = (uint8_t)(r < 0 ? 0 : (r > 255 ? 255 : r));
+	uint8_t gc = (uint8_t)(g < 0 ? 0 : (g > 255 ? 255 : g));
+	uint8_t bc = (uint8_t)(b < 0 ? 0 : (b > 255 ? 255 : b));
+
+	st->color_mode = MCUFW_PWM_MODE_RGB;
+	st->mutations++;
+	mcufw_pwm_rgb(rc, gc, bc);
 	return 0;
 }
 

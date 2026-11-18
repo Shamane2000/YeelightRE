@@ -438,6 +438,21 @@ static void run_rpc_state(void)
           rc > 0 && st->hue == 200 && st->sat == 60 && st->bright == 80 &&
           strstr(out, "\"ok\",200,60,80") != NULL);
 
+
+    memset(&req, 0, sizeof(req));
+    strcpy(req.method, "set_rgb");
+    /* Yeelight RGB integer: (128<<16)|(64<<8)|32 = 8405024 */
+    strcpy(req.params, "[8405024]");
+    req.id = 15;
+    req.have_id = 1;
+    rc = mcufw_rpc_dispatch(&req, out, sizeof(out));
+    check("rpc/state/set_rgb_response",
+          rc > 0 && strstr(out, "\"ok\",8405024") != NULL);
+    /* Verify PWM backend received RGB mode */
+    const mcufw_pwm_stats_t *pst = mcufw_pwm_stats();
+    check("rpc/state/set_rgb_pwm_mode", pst->mode == MCUFW_PWM_MODE_RGB);
+    check("rpc/state/set_rgb_channels", pst->ch_level[0] > 0 && pst->ch_level[1] > 0 && pst->ch_level[2] > 0);
+
     memset(&req, 0, sizeof(req));
     strcpy(req.method, "set_name");
     strcpy(req.params, "[\"Kitchen\"]");
@@ -1040,6 +1055,33 @@ static void run_pwm_rgbw(void)
     st = mcufw_pwm_stats();
     check("pwm_rgbw/restore_gpio44_on", mcufw_pwm_hal_stub_gpio_get(44) == 1);
     check("pwm_rgbw/restore_powered", st->powered == 1);
+    /* set_rgb: pure red (255,0,0) -> R=period, G=0, B=0, W=0 */
+    mcufw_pwm_rgb(255, 0, 0);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_red_mode", st->mode == MCUFW_PWM_MODE_RGB);
+    check("pwm_rgbw/rgb_red_gpio44_on", mcufw_pwm_hal_stub_gpio_get(44) == 1);
+    check("pwm_rgbw/rgb_red_r_full", st->ch_level[0] == MCUFW_PWM_PERIOD);
+    check("pwm_rgbw/rgb_red_gb_zero", st->ch_level[1] == 0 && st->ch_level[2] == 0);
+    check("pwm_rgbw/rgb_red_w_zero", st->ch_level[3] == 0);
+
+    /* set_rgb: white (255,255,255) -> all channels at period */
+    mcufw_pwm_rgb(255, 255, 255);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_white_all_full",
+          st->ch_level[0] == MCUFW_PWM_PERIOD && st->ch_level[1] == MCUFW_PWM_PERIOD &&
+          st->ch_level[2] == MCUFW_PWM_PERIOD && st->ch_level[3] == MCUFW_PWM_PERIOD);
+
+    /* set_rgb: black (0,0,0) -> off */
+    mcufw_pwm_rgb(0, 0, 0);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_black_off", st->mode == MCUFW_PWM_MODE_OFF);
+    check("pwm_rgbw/rgb_black_gpio44_off", mcufw_pwm_hal_stub_gpio_get(44) == 0);
+
+    /* set_rgb: mixed color (128,64,32) -> W=min=32*period/255 */
+    mcufw_pwm_rgb(128, 64, 32);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_mixed_mode", st->mode == MCUFW_PWM_MODE_RGB);
+    check("pwm_rgbw/rgb_mixed_w_extracted", st->ch_level[3] > 0 && st->ch_level[3] <= st->ch_level[2]);
     printf("  pwm_rgbw: reg_writes=%u skipped=%u service_applied=%u\n",
            st->reg_writes, st->skipped_identical, st->service_applied);
 }
