@@ -439,6 +439,14 @@ static void run_rpc_state(void)
           strstr(out, "\"ok\",200,60,80") != NULL);
 
 
+    /* Power on first so set_rgb apply() drives channels (Review R3 fix) */
+    memset(&req, 0, sizeof(req));
+    strcpy(req.method, "set_power");
+    strcpy(req.params, "[\"on\"]");
+    req.id = 99;
+    req.have_id = 1;
+    mcufw_rpc_dispatch(&req, out, sizeof(out));
+
     memset(&req, 0, sizeof(req));
     strcpy(req.method, "set_rgb");
     /* Yeelight RGB integer: (128<<16)|(64<<8)|32 = 8405024 */
@@ -1084,7 +1092,25 @@ static void run_pwm_rgbw(void)
     check("pwm_rgbw/rgb_mixed_w_extracted", st->ch_level[3] > 0 && st->ch_level[3] <= st->ch_level[2]);
     printf("  pwm_rgbw: reg_writes=%u skipped=%u service_applied=%u\n",
            st->reg_writes, st->skipped_identical, st->service_applied);
+
+    /* Round-trip: set_rgb -> set_bright must preserve color (Review R3 fix) */
+    {
+        mcufw_state_t rst;
+        const mcufw_pwm_stats_t *pst;
+        mcufw_state_init(&rst);
+        mcufw_state_set_power(&rst, 1);
+        mcufw_state_set_rgb(&rst, 255, 0, 0);   /* pure red */
+        mcufw_state_set_bright(&rst, 50);       /* brightness change triggers apply() */
+        pst = mcufw_pwm_stats();
+        check("pwm_rgbw/rgb_state_roundtrip_not_black",
+              pst->ch_level[0] > 0 || pst->ch_level[1] > 0 || pst->ch_level[2] > 0 || pst->ch_level[3] > 0);
+        check("pwm_rgbw/rgb_state_roundtrip_r_dominant",
+              pst->ch_level[0] >= pst->ch_level[1] && pst->ch_level[0] >= pst->ch_level[2]);
+        check("pwm_rgbw/rgb_state_roundtrip_mode_rgb",
+              pst->mode == MCUFW_PWM_MODE_RGB);
+    }
 }
+
 
 int main(void)
 {

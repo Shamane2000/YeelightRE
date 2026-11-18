@@ -39,7 +39,10 @@ typedef struct {
 	uint16_t ct;         /* 1700..6500 Kelvin                           */
 	uint16_t hue;        /* 0..359                                      */
 	uint8_t  sat;        /* 0..100                                      */
-	uint8_t  color_mode; /* 2 = ct, 3 = hsv                             */
+	uint8_t  color_mode; /* 1 = rgb, 2 = ct, 3 = hsv                    */
+	uint8_t  rgb_r;      /* 0..255 (persisted for set_rgb round-trip)     */
+	uint8_t  rgb_g;      /* 0..255                                          */
+	uint8_t  rgb_b;      /* 0..255                                          */
 	uint8_t  cf_active;  /* colour flow running                         */
 	uint8_t  is_default; /* "set_default" marker                        */
 	char     name[MCUFW_NAME_MAX + 1u];
