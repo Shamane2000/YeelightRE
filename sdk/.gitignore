@@ -1,0 +1,6 @@
+vendor/
+apps/mcufw/build/
+*.o
+*.elf
+*.map
+*.bin

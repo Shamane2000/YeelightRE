@@ -1,0 +1,13 @@
+# sdk.lock -- pinned provenance of the external SDK. Sourced by bootstrap.sh.
+#
+# The vendor tree is NOT vendored into the YeelightRE repo (size + licence);
+# it is pinned by URL + commit and re-verified on every bootstrap.
+ECL_URL="https://github.com/dhrishi/ez-connect-lite.git"
+ECL_COMMIT="99c05212f5853a1750c29b89f01d95041e3322ef"   # 2016-08-01T13:59:41+05:30
+
+# Reference (known-good) vendor image used for container format checks.
+REF_FIRMWARE="firmware/color1_142_0061/upd_yeelink.light.color1.bin"
+REF_ELF="firmware/color1_142_0061/color1_0061.elf"
+
+# Minimum toolchain (context: gcc-arm-none-eabi 4.9.3 in SSoT §4).
+MIN_GCC_VERSION="4.9.3"

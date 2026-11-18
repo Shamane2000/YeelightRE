@@ -1,0 +1,63 @@
+# Flash- und Container-Layout 88MW300/88MW302 (Yeelight)
+
+Zwei getrennte Layouts, die oft verwechselt werden.
+
+## 1. Flash-Layout auf dem SoC
+
+| Bereich | Offset | Groesse | Inhalt |
+| --- | --- | --- | --- |
+| `boot2` | `0x000000`–`0x00FFFF` | 64 KB | Marvell-Bootloader, liest den MRVL-Container, kopiert Segmente an ihre Ladeadressen, springt auf `entry` |
+| App-Slot | `0x010000`–`0x06FFFF` | 384 KB | unser `mcufw`-Container (max. `0x60000` Bytes) |
+| Rest | ab `0x070000` | — | von Yeelight nicht genutzt / reserviert |
+
+Der Container selbst enthaelt bereits die Ladeadressen, der App-Slot ist also nur
+eine Obergrenze fuer die Dateigroesse (`--app-slot-max 0x60000` im Verifier).
+
+## 2. MRVL-Container-Layout (Datei)
+
+Header 20 Bytes, danach die Segment-Tabelle, danach 0xFF-Fuellung bis zum
+ersten Segment, danach die Segment-Rohdaten ohne weitere Fuellung.
+
+```
+0x00  4   magic      "MRVL"
+0x04  4   magic2     0x2e9cf17b (in allen 5 bekannten Vendor-Images identisch)
+0x08  4   timestamp  Build-Zeitstempel, von axf2firmware via time(NULL) gesetzt
+0x0c  4   seg_cnt    Anzahl Segmente (Vendor-Images: 3)
+0x10  4   entry      Einstiegspunkt, Thumb-Bit gesetzt (= App-Segment-Adresse | 1)
+0x14  20*n Segment-Tabelle, je Eintrag:
+           +0x00  4  type        2 = ladbarer Code/Daten
+           +0x04  4  offset      Datei-Offset der Segmentdaten
+           +0x08  4  size        Groesse in Bytes
+           +0x0c  4  load_addr   Zieladresse beim Boot
+           +0x10  4  crc32       CRC-32 des Segment-Bodys
+```
+
+### CRC-32
+
+Reflektiertes CRC-32 (Poly `0x04C11DB7` gespiegelt, Tabelle `0xEDB88320`),
+**Initialwert 0, kein finales XOR**. `zlib.crc32()` liefert etwas anderes
+(invertiert vor und nach der Berechnung) und ist hier falsch.
+
+### Segmente des Referenz-Images `color1_0061`
+
+| # | Typ | Datei-Offset | Groesse | Ladeadresse | Ziel |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 2 | `0x0000c8` | `0x3210` | `0x00100000` | SRAM0 (`.init`/Vektoren) |
+| 2 | 2 | `0x0032d8` | `0x47bd8` | `0x1f0032d8` | XIP-Flash (`.text`), = `entry & ~1` |
+| 3 | 2 | `0x04aeb0` | `0x136c` | `0x20000040` | SRAM1 (`.data`) |
+
+Die Datei endet exakt am Ende des letzten Segments (`0x4c21c`), es gibt keinen
+Trailer. `0x14 + 0x3*20 = 0x50` bis `0xc8` ist mit `0xFF` gefuellt.
+
+## Abgeleitete Konstanten fuer den Linker
+
+```
+_text_offset      = 0xc8      # Header + 3 Segment-Eintraege
+_flashc_mem_start = 0x1f000000
+_init_size        = 0x3210    # Belegung des Vendor-.init
+=> .text-Adresse  = 0x1f000000 + 0xc8 + 0x3210 = 0x1f0032d8
+```
+
+Das ist der Grund, warum `sdk/apps/mcufw/mw300_min.ld` das eigene `.init` auf
+`0x3210` Bytes auffuellt: nur so landet `.text` auf derselben Flash-Adresse wie
+beim Vendor-Image, und `entry` bleibt `0x1f0032d9`.
