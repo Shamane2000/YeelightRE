@@ -81,7 +81,10 @@ Zwei Linker-Konstruktionen sind dafür verantwortlich:
 $ ls -l sdk/apps/mcufw/build/mcufw_MRVL.bin
 -rw-rw-r-- 1 jarvis jarvis 13636 ... mcufw_MRVL.bin        # 0x3544
 
-sha256=72fa05094ae0a033967d849e98d8b63980b87591022dee8111bf848d6192e95d
+Deterministisch: sdk/apps/mcufw/build/mcufw.elf
+  sha256=0469c381adb94e6b87bd81b55b5f12b99ee2b260a47f2e3e05259fc3598c39d7
+Container (Timestamp-abhängig, siehe Befund 1):
+  sha256=e69f21bbcb6951701736ed4757d61264ad2e37f07b9008cf6f5e89076188101f
 
 magic=MRVL  magic2=0x2e9cf17b  segs=3  entry=0x1f0032d9
 seg1 type=2 off=0x0000c8 size=0x3210 addr=0x00100000
@@ -126,9 +129,13 @@ CRC-Verfahren (empirisch an allen drei Referenzsegmenten bestätigt):
 reflektiertes CRC-32 mit Tabelle `0xEDB88320`, **Initialwert 0, kein finales
 XOR**. `zlib.crc32()` ist falsch (invertiert vor/nach).
 
-Determinismus: zwei Cleans+Builts liefern byte-identische Container bis auf die
-4 Timestamp-Bytes (`--determinism-against`, `PASS`). Das ELF selbst ist
-deterministisch (kein `__DATE__`/`__TIME__`, `-fno-ident`).
+Determinismus: zwei Cleans+Builts (und zwei Builds aus **verschiedenen
+Verzeichnissen**) liefern ein byte-identisches ELF
+(`sha256=0469c381…`); der Container ist bis auf die 4 Timestamp-Bytes
+(`--determinism-against`, `PASS`) identisch. Dafür sorgen `-fno-ident`,
+kein `__DATE__`/`__TIME__` und `-ffile-prefix-map` (ohne das landete der
+Build-Pfad im `DW_AT_comp_dir` und ein Clone unter anderem Pfad ergäbe ein
+anderes ELF).
 
 ## 6. Befunde / begründete Abweichungen
 

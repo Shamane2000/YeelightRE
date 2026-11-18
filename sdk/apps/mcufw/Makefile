@@ -19,10 +19,15 @@ CONTAINER := $(BUILD)/mcufw_MRVL.bin
 
 # -ffreestanding + -fno-unwind-tables: no host libc, no .ARM.exidx bloat.
 # -fno-common: gcc>=10 default, stated explicitly for older toolchains.
+# -ffile-prefix-map: -g records the build directory in DW_AT_comp_dir; mapping the
+# repo root to a fixed string makes the ELF byte-identical across clone paths
+# (proven by building the same tree in two directories).
+REPO_ROOT := $(abspath $(ROOT)/../../..)
 CFLAGS    := -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -mabi=aapcs \
              -O2 -g -std=c11 -Wall -Wextra -Werror \
              -ffreestanding -fno-common -fno-unwind-tables \
              -fno-asynchronous-unwind-tables -fno-ident \
+             -ffile-prefix-map=$(REPO_ROOT)=/yeelight-re \
              -I$(SRC)
 LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -mabi=aapcs \
              -nostdlib -nostartfiles -Wl,--build-id=none \
