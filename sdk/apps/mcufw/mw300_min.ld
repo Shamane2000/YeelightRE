@@ -82,11 +82,22 @@ SECTIONS
 		_ebss = .;
 	} > SRAM1
 
+	/* FreeRTOS heap window expected by libwmsdk.a: everything from the end of
+	 * .bss to the top of SRAM1.  The bump allocator in mcufw_shim.c is its only
+	 * consumer and is inert until phase 5 (mcufw_os_ready() == 0). */
+	_bss = _sbss;
+	_heap_2_start = _ebss;
+	_heap_2_end = _estack;
+
 	.nvram (NOLOAD) :
 	{
+		_nvram_begin = .;
 		_nvram_start = .;
-		. = . + 64;
+		KEEP(*(.nvram))
+		KEEP(*(.nvram.*))
+		. = _nvram_start + 256;
 		. = ALIGN(4);
+		_nvram_end = .;
 	} > NVRAM
 
 	/DISCARD/ :
@@ -101,3 +112,6 @@ SECTIONS
 ASSERT(SIZEOF(.init) == _init_size, "mcufw .init does not match _init_size")
 ASSERT(ADDR(.text) == 0x1f0032d8, "mcufw .text is not at the color1_0061 address")
 ASSERT(ADDR(.data) == 0x20000040, "mcufw .data is not at the color1_0061 address")
+ASSERT(_ebss <= _estack, "mcufw .bss overflows SRAM1")
+ASSERT(SIZEOF(.nvram) == 256, "mcufw .nvram is not 256 bytes")
+ASSERT(_nvram_begin == 0x480c0000, "mcufw .nvram is not at 0x480c0000")

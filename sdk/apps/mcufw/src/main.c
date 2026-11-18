@@ -1,6 +1,22 @@
-/* main.c — mcufw phase 3.3: lamp PWM + corrected GPIO data/direction path.
+/* main.c — mcufw phase 3.4: WLAN link boundary + miIO UDP channel (54321).
  *
- * Cloud-free: no WLAN, no miIO/RPC, no OTA, no RTOS.
+ * New in 3.4:
+ *   - mcufw_wlan.c: libwmsdk.a(mlan_init.o)+(mdev_startup.o) linked and the
+ *     bring-up state machine (cfg -> link -> mlan -> assoc) runs up to the
+ *     RTOS gate.  No association yet (phase 5) -- and the banner says so.
+ *   - mcufw_miio.c: miIO-compatible UDP channel on port 54321 (32-byte
+ *     header, hello handshake incl. token hand-out, MD5 checksum,
+ *     AES-128-CBC payload, method dispatch).  `miIO.ota` is the only OTA
+ *     channel (docs/06).  No LAN-JSON-RPC, no MQTT (that is 3.5).
+ *   - mcufw_crypto.c: own MD5 + AES-128-CBC so the miIO layer does not have
+ *     to guess the layout of the vendor crypto contexts.
+ *   - mcufw_shim.c: link shims for the FreeRTOS/lwIP surface that the mlan
+ *     object graph references but 3.4 does not own; all inert by design.
+ *
+ * Still cloud-free: no association, no cloud MQTT, no OTA download.
+ *
+ * 3.3 (kept): lamp PWM on GPT0 CH0/1/4/5 and the corrected GPIO
+ * data/direction path (GPSR/GPCR = data, GSDR/GCDR = direction).
  *
  * New in 3.3 (all offsets proven against color1_0061.elf, docs/09):
  *   - GPIO data/direction semantics of phase 3.2 CORRECTED: GPSR/GPCR carry
@@ -15,8 +31,12 @@
  */
 #include "mcufw_regs.h"
 #include "mcufw_gpt.h"
+#include "mcufw_wlan.h"
+#include "mcufw_miio.h"
+#include "mcufw_crypto.h"
+#include "mcufw_selftest.h"
 
-#define MCUFW_VERSION "mcufw 0.3-phase3.3"
+#define MCUFW_VERSION "mcufw 0.4-phase3.4"
 
 /* --- vendor driver entry points (libwmsdk.a:mw300_pinmux.o) --------------- *
  * Declared locally instead of including mw300_pinmux.h: the vendor header drags
@@ -168,13 +188,138 @@ static void lamp_banner(void)
 	uart_puts("\r\n");
 }
 
+/* --- network layer, phase 3.4 -------------------------------------------- */
+#define MCUFW_MIIO_DID 0x05eb8034u   /* did of the reference carrier (.115) */
+
+static void uart_put_hex_buf(const uint8_t *p, unsigned n)
+{
+	for (unsigned i = 0; i < n; i++) {
+		uart_putc("0123456789abcdef"[p[i] >> 4]);
+		uart_putc("0123456789abcdef"[p[i] & 15u]);
+	}
+}
+
+/* Known-answer tests: RFC 1321 (MD5), FIPS-197 (AES block), SP 800-38A
+ * (AES-CBC) and the miIO hello/OTA round trips.  Same code as the host test. */
+static void net_selftest(void)
+{
+	uint32_t fail = mcufw_selftest();
+	unsigned n = mcufw_selftest_count();
+	unsigned pass = 0;
+
+	for (unsigned i = 0; i < n; i++) {
+		int ok = (fail & (1u << i)) == 0u;
+
+		uart_puts("selftest ");
+		uart_puts(mcufw_selftest_name(i));
+		uart_puts(ok ? " PASS\r\n" : " FAIL\r\n");
+		if (ok)
+			pass++;
+	}
+	uart_puts("selftest-summary ");
+	uart_put_dec(pass);
+	uart_putc('/');
+	uart_put_dec(n);
+	uart_puts(fail == 0u ? " PASS\r\n" : " FAIL\r\n");
+}
+
+static void net_wlan(void)
+{
+	const mcufw_wlan_cfg_t *cfg = mcufw_wlan_cfg();
+	mcufw_wlan_anchor_t anchors[8];
+	mcufw_wlan_report_t rep;
+	unsigned count = mcufw_wlan_link_proof(anchors, 8);
+	int rc = mcufw_wlan_bringup(cfg, &rep);
+
+	uart_puts("wlan cfg provisioned ");
+	uart_put_dec(cfg->provisioned);
+	uart_puts(" muid ");
+	uart_put_hex32(cfg->muid);
+	uart_puts("\r\n");
+
+	for (unsigned i = 0; i < count && i < 8u; i++) {
+		uart_puts("wlan sym ");
+		uart_puts(anchors[i].name);
+		uart_puts(" @");
+		uart_put_hex32((uint32_t)(uintptr_t)anchors[i].addr);
+		uart_puts(" ");
+		uart_puts(anchors[i].member);
+		uart_puts("\r\n");
+	}
+
+	uart_puts("wlan bringup stage ");
+	uart_puts(mcufw_wlan_stage_name(rep.stage));
+	uart_puts(" rc ");
+	uart_puts(mcufw_wlan_strerror(rc));
+	uart_puts(" (assoc = phase 5)\r\n");
+}
+
+/* In-image round trip of the miIO hello: the handler answers its own request,
+ * so header layout, token hand-out and MD5 checksum are exercised on the real
+ * target.  The encrypted path (miIO.ota) is covered by the selftest above. */
+static void net_miio(void)
+{
+	mcufw_miio_ctx_t ctx;
+	uint8_t pkt[64];
+	uint8_t out[64];
+	uint8_t digest[16];
+	size_t out_len = 0;
+	int rc;
+
+	mcufw_miio_ctx_init(&ctx, MCUFW_MIIO_DID);
+
+	uart_puts("miio port ");
+	uart_put_dec(MCUFW_MIIO_PORT);
+	uart_puts(" did ");
+	uart_put_hex32(ctx.did);
+	uart_puts(" token ");
+	uart_put_hex_buf(ctx.token, MCUFW_MIIO_TOKEN_LEN);
+	uart_puts(ctx.have_token ? " paired\r\n" : " unprovisioned\r\n");
+
+	/* 32-byte hello, all-zero body (shape observed towards the carrier). */
+	for (unsigned i = 0; i < sizeof(pkt); i++)
+		pkt[i] = 0;
+	pkt[0] = 0x31;
+	pkt[1] = 0x21;
+	pkt[2] = (uint8_t)MCUFW_MIIO_HDR_LEN;
+	pkt[3] = 0;
+	pkt[8] = (uint8_t)(ctx.did);
+	pkt[9] = (uint8_t)(ctx.did >> 8);
+	pkt[10] = (uint8_t)(ctx.did >> 16);
+	pkt[11] = (uint8_t)(ctx.did >> 24);
+	pkt[12] = 0x10;                 /* stamp; no RTC in 3.4 -> fixed test */
+
+	rc = mcufw_miio_handle(&ctx, pkt, MCUFW_MIIO_HDR_LEN, out, sizeof(out),
+			       &out_len);
+	uart_puts("miio hello rc ");
+	uart_puts(mcufw_miio_strerror(rc));
+	uart_puts(" reply-len ");
+	uart_put_dec((uint32_t)out_len);
+
+	if (rc == MCUFW_MIIO_OK && out_len == MCUFW_MIIO_HDR_LEN) {
+		mcufw_md5_2(out, 16u, ctx.token, MCUFW_MIIO_TOKEN_LEN, digest);
+		{
+			int ck = 1;
+
+			for (unsigned i = 0; i < MCUFW_MD5_LEN; i++)
+				if (digest[i] != out[16 + i])
+					ck = 0;
+			uart_puts(" checksum ");
+			uart_puts(ck ? "ok" : "BAD");
+		}
+		uart_puts(" reply-checksum ");
+		uart_put_hex_buf(out + 16, MCUFW_MIIO_TOKEN_LEN);
+	}
+	uart_puts("\r\n");
+}
+
 int main(void)
 {
 	uart0_init();
 
 	uart_puts("\r\n");
 	uart_puts(MCUFW_VERSION);
-	uart_puts(" -- no WLAN, no miIO, no cloud\r\n");
+	uart_puts(" -- wlan link + miio channel, no assoc, no cloud\r\n");
 	uart_puts("boot-marker ");
 	uart_put_hex32(mcufw_boot_marker);
 	uart_puts("\r\n");
@@ -199,6 +344,13 @@ int main(void)
 	/* Lamp path: GPT0 PWM on the four real channels. */
 	lamp_init();
 	lamp_banner();
+
+	/* Network layer (phase 3.4): known-answer selftest, WLAN link boundary,
+	 * miIO channel.  All three run before the sweep so a serial capture is
+	 * enough to judge the build. */
+	net_selftest();
+	net_wlan();
+	net_miio();
 
 	/* Taster: no GPIO pin is armed in this firmware (see mcufw_regs.h).
 	 * Report the interrupt-enable state of the edge detectors instead of
