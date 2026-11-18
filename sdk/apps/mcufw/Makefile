@@ -1,11 +1,8 @@
-# mcufw/Makefile -- compile + link the minimal firmware and pack the MRVL container.
+# mcufw/Makefile -- Phase 3.5: RTOS + lwIP + LAN-RPC + MQTT + CF-Gerüst.
 #
-# Phase 3.4 adds the network layer:
-#   mcufw_wlan.c     mlan/mdev link boundary + bring-up state machine
-#   mcufw_miio.c     miIO-compatible UDP channel (port 54321)
-#   mcufw_crypto.c   own MD5 + AES-128-CBC (no vendor context layouts)
-#   mcufw_selftest.c known-answer tests, shared with the host test
-#   mcufw_shim.c     link shims for the FreeRTOS/lwIP surface (inert by design)
+# FreeRTOS und lwIP werden aus den SDK-Sources gebaut. Jede Source-Gruppe
+# hat explizite Objekt-Pfade im Build-Verzeichnis, um Kollisionen bei
+# gleichen Dateinamen (z.B. timers.c in FreeRTOS UND lwIP) zu vermeiden.
 
 ROOT      := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 SDK_DIR   := $(abspath $(ROOT)/../../vendor/ez-connect-lite)
@@ -21,19 +18,7 @@ SIZE      := $(CROSS)size
 READELF   := $(CROSS)readelf
 NM        := $(CROSS)nm
 
-# Vendor SDK archive: mcufw pulls GPIO_PinMuxFun/GPIO_PinModeConfig from
-# mw300_pinmux.o (phase 3.2) and now the whole mlan/mdev init graph
-# (mlan_init.o, mdev_startup.o) so the WLAN stack is really in the image.
-# The archive also ships ttcp.o with its own main(), so it is linked as a plain
-# archive (members pulled on demand), never --whole-archive.
 VENDOR_LIB := $(SDK_DIR)/sdk/libs/libwmsdk.a
-
-# mdev_startup.o also defines Reset_IRQHandler / Default_IRQHandler /
-# HardFault_IRQHandler.  mcufw owns the reset vector (startup.c, deterministic
-# .data/.bss init proven in 3.1/3.2), so the vendor copies are renamed inside a
-# build-local copy of the archive instead of relaxing the linker with
-# --allow-multiple-definition.  Everything else in the member stays verbatim,
-# and CLK_Init/boot_init keep their names.
 VENDOR_STAGE := $(BUILD)/vendor
 PATCHED_LIB  := $(BUILD)/libwmsdk_mcufw.a
 RENAMES      := Reset_IRQHandler Default_IRQHandler HardFault_IRQHandler
@@ -43,44 +28,175 @@ TARGET    := $(BUILD)/mcufw
 ELF       := $(TARGET).elf
 CONTAINER := $(BUILD)/mcufw_MRVL.bin
 
-# -ffreestanding + -fno-unwind-tables: no host libc, no .ARM.exidx bloat.
-# -fno-common: gcc>=10 default, stated explicitly for older toolchains.
-# -ffile-prefix-map: -g records the build directory in DW_AT_comp_dir; mapping the
-# repo root to a fixed string makes the ELF byte-identical across clone paths
-# (proven by building the same tree in two directories).
 REPO_ROOT := $(abspath $(ROOT)/../../..)
-CFLAGS    := -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -mabi=aapcs \
+CFLAGS    := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
              -O2 -g -std=c11 -Wall -Wextra -Werror \
              -ffreestanding -fno-common -fno-unwind-tables \
              -fno-asynchronous-unwind-tables -fno-ident \
              -ffile-prefix-map=$(REPO_ROOT)=/yeelight-re \
-             -I$(SRC)
-LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -mabi=aapcs \
+             -I$(SRC) \
+             -I$(SDK_DIR)/sdk/external/freertos/Source/include \
+             -I$(SDK_DIR)/sdk/external/freertos/Source/portable/GCC/ARM_CM4F \
+             -I$(SDK_DIR)/sdk/external/freertos \
+             -I$(SDK_DIR)/sdk/external/lwip/src/include \
+             -I$(SDK_DIR)/sdk/external/lwip/src/include/ipv4 \
+             -I$(SDK_DIR)/sdk/external/lwip/src/include/ipv6 \
+             -I$(SDK_DIR)/sdk/external/lwip/contrib/port/FreeRTOS/wmsdk \
+             -I$(SDK_DIR)/sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTClient-C/src \
+             -I$(SDK_DIR)/sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src \
+             -I$(SDK_DIR)/sdk/src/incl/sdk \
+             -I$(SDK_DIR)/sdk/src/incl/platform \
+             -I$(SDK_DIR)/sdk/src/incl/platform/os \
+             -I$(SDK_DIR)/sdk/src/incl/libc \
+             -I$(SDK_DIR)/sdk/src/incl/libc/GCC \
+             -I$(SDK_DIR)/sdk/src/incl/sdk/drivers/mw300
+# SDK vendor code (FreeRTOS, lwIP, MQTT) is not -Werror clean.
+# Strip -Werror and add targeted suppressions for known SDK warnings.
+SDK_CFLAGS := $(filter-out -Werror,$(CFLAGS)) \
+              -Wno-unused-parameter -Wno-sign-compare \
+              -DTCP_SND_BUF_COUNT=4
+LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
              -nostdlib -nostartfiles -Wl,--build-id=none \
              -Wl,-Map=$(TARGET).map -T$(LDSCRIPT)
 
-SRCS      := $(SRC)/startup.c $(SRC)/main.c $(SRC)/mcufw_gpt.c \
-             $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_wlan.c \
-             $(SRC)/mcufw_selftest.c $(SRC)/mcufw_shim.c
+# --- mcufw application objects -------------------------------------------
+MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
+              $(BUILD)/mcufw/mcufw_gpt.o $(BUILD)/mcufw/mcufw_crypto.o \
+              $(BUILD)/mcufw/mcufw_miio.o $(BUILD)/mcufw/mcufw_wlan.o \
+              $(BUILD)/mcufw/mcufw_selftest.o $(BUILD)/mcufw/mcufw_shim.o \
+              $(BUILD)/mcufw/mcufw_rtos.o $(BUILD)/mcufw/mcufw_lwip.o \
+              $(BUILD)/mcufw/mcufw_lan_rpc.o $(BUILD)/mcufw/mcufw_mqtt.o \
+              $(BUILD)/mcufw/mcufw_cf.o $(BUILD)/mcufw/mcufw_lwip_chksum.o
 
-OBJS      := $(BUILD)/startup.o $(BUILD)/main.o $(BUILD)/mcufw_gpt.o \
-             $(BUILD)/mcufw_crypto.o $(BUILD)/mcufw_miio.o \
-             $(BUILD)/mcufw_wlan.o $(BUILD)/mcufw_selftest.o \
-             $(BUILD)/mcufw_shim.o
+# --- FreeRTOS objects ----------------------------------------------------
+FR_DIR := $(SDK_DIR)/sdk/external/freertos
+FR_OBJS := $(BUILD)/freertos/list.o $(BUILD)/freertos/queue.o \
+           $(BUILD)/freertos/tasks.o $(BUILD)/freertos/event_groups.o \
+           $(BUILD)/freertos/croutine.o $(BUILD)/freertos/timers.o \
+           $(BUILD)/freertos/heap_4.o $(BUILD)/freertos/port.o
 
-.PHONY: all elf container check-vendor inspect clean host-test
+# --- lwIP objects --------------------------------------------------------
+LW_DIR := $(SDK_DIR)/sdk/external/lwip
+LW_OBJS := $(BUILD)/lwip/def.o $(BUILD)/lwip/dhcp.o $(BUILD)/lwip/pbuf.o \
+           $(BUILD)/lwip/tcp_out.o $(BUILD)/lwip/raw.o $(BUILD)/lwip/lwip_timers.o \
+           $(BUILD)/lwip/dns.o $(BUILD)/lwip/stats.o $(BUILD)/lwip/tcp_in.o \
+           $(BUILD)/lwip/ip4_addr.o $(BUILD)/lwip/ip4.o $(BUILD)/lwip/ip_addr.o \
+           $(BUILD)/lwip/ip_frag.o $(BUILD)/lwip/ip.o \
+           $(BUILD)/lwip/inet.o $(BUILD)/lwip/icmp.o $(BUILD)/lwip/udp.o \
+           $(BUILD)/lwip/tcp.o $(BUILD)/lwip/netif.o $(BUILD)/lwip/mem.o \
+           $(BUILD)/lwip/memp.o $(BUILD)/lwip/init.o $(BUILD)/lwip/sys_arch.o
+
+# --- MQTT embedded client objects ----------------------------------------
+MQ_DIR := $(SDK_DIR)/sdk/external/aws_iot/aws_mqtt_embedded_client_lib
+MQ_OBJS := $(BUILD)/mqtt/MQTTClient.o $(BUILD)/mqtt/MQTTConnectClient.o \
+           $(BUILD)/mqtt/MQTTDeserializePublish.o $(BUILD)/mqtt/MQTTFormat.o \
+           $(BUILD)/mqtt/MQTTPacket.o $(BUILD)/mqtt/MQTTSerializePublish.o \
+           $(BUILD)/mqtt/MQTTSubscribeClient.o $(BUILD)/mqtt/MQTTUnsubscribeClient.o
+
+ALL_OBJS := $(MCUFW_OBJS) $(FR_OBJS) $(LW_OBJS) $(MQ_OBJS)
+
+.PHONY: all elf container check-vendor check-net inspect clean host-test
 
 all: container
 
 elf: $(ELF)
 
-$(BUILD):
-	@mkdir -p $(BUILD)
+# --- directory creation ---------------------------------------------------
+$(BUILD)/mcufw $(BUILD)/freertos $(BUILD)/lwip $(BUILD)/mqtt $(BUILD)/vendor:
+	@mkdir -p $@
 
-$(BUILD)/%.o: $(SRC)/%.c | $(BUILD)
+# --- mcufw application compile rules -------------------------------------
+$(BUILD)/mcufw/%.o: $(SRC)/%.c | $(BUILD)/mcufw
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(PATCHED_LIB): $(VENDOR_LIB) | $(BUILD)
+# --- FreeRTOS compile rules ----------------------------------------------
+$(BUILD)/freertos/list.o: $(FR_DIR)/Source/list.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/freertos/queue.o: $(FR_DIR)/Source/queue.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/freertos/tasks.o: $(FR_DIR)/Source/tasks.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/freertos/event_groups.o: $(FR_DIR)/Source/event_groups.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/freertos/croutine.o: $(FR_DIR)/Source/croutine.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/freertos/timers.o: $(FR_DIR)/Source/timers.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/freertos/heap_4.o: $(FR_DIR)/Source/portable/MemMang/heap_4.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/freertos/port.o: $(FR_DIR)/Source/portable/GCC/ARM_CM4F/port.c | $(BUILD)/freertos
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+# --- lwIP compile rules --------------------------------------------------
+$(BUILD)/lwip/def.o: $(LW_DIR)/src/core/def.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/dhcp.o: $(LW_DIR)/src/core/dhcp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/pbuf.o: $(LW_DIR)/src/core/pbuf.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/tcp_out.o: $(LW_DIR)/src/core/tcp_out.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/raw.o: $(LW_DIR)/src/core/raw.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/lwip_timers.o: $(LW_DIR)/src/core/timers.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/dns.o: $(LW_DIR)/src/core/dns.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/stats.o: $(LW_DIR)/src/core/stats.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/tcp_in.o: $(LW_DIR)/src/core/tcp_in.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/ip4_addr.o: $(LW_DIR)/src/core/ipv4/ip4_addr.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/ip4.o: $(LW_DIR)/src/core/ipv4/ip4.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/ip_addr.o: $(LW_DIR)/src/core/ipv4/ip_addr.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mcufw_lwip_chksum.o: src/mcufw_lwip_chksum.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/lwip/ip_frag.o: $(LW_DIR)/src/core/ipv4/ip_frag.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/ip.o: $(LW_DIR)/src/core/ipv4/ip.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/inet.o: $(LW_DIR)/src/core/ipv4/inet.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/icmp.o: $(LW_DIR)/src/core/ipv4/icmp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/udp.o: $(LW_DIR)/src/core/udp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/tcp.o: $(LW_DIR)/src/core/tcp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/netif.o: $(LW_DIR)/src/core/netif.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/mem.o: $(LW_DIR)/src/core/mem.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/memp.o: $(LW_DIR)/src/core/memp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/init.o: $(LW_DIR)/src/core/init.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/lwip/sys_arch.o: $(LW_DIR)/contrib/port/FreeRTOS/wmsdk/sys_arch.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+# --- MQTT compile rules --------------------------------------------------
+$(BUILD)/mqtt/MQTTClient.o: $(MQ_DIR)/MQTTClient-C/src/MQTTClient.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mqtt/MQTTConnectClient.o: $(MQ_DIR)/MQTTPacket/src/MQTTConnectClient.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mqtt/MQTTDeserializePublish.o: $(MQ_DIR)/MQTTPacket/src/MQTTDeserializePublish.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mqtt/MQTTFormat.o: $(MQ_DIR)/MQTTPacket/src/MQTTFormat.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mqtt/MQTTPacket.o: $(MQ_DIR)/MQTTPacket/src/MQTTPacket.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mqtt/MQTTSerializePublish.o: $(MQ_DIR)/MQTTPacket/src/MQTTSerializePublish.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mqtt/MQTTSubscribeClient.o: $(MQ_DIR)/MQTTPacket/src/MQTTSubscribeClient.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+$(BUILD)/mqtt/MQTTUnsubscribeClient.o: $(MQ_DIR)/MQTTPacket/src/MQTTUnsubscribeClient.c | $(BUILD)/mqtt
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+# --- vendor archive patching ---------------------------------------------
+$(PATCHED_LIB): $(VENDOR_LIB) | $(BUILD)/vendor
 	@rm -rf $(VENDOR_STAGE) && mkdir -p $(VENDOR_STAGE)
 	cd $(VENDOR_STAGE) && $(AR) x $(VENDOR_LIB)
 	cd $(VENDOR_STAGE) && $(OBJCOPY) \
@@ -93,16 +209,14 @@ $(PATCHED_LIB): $(VENDOR_LIB) | $(BUILD)
 	cd $(VENDOR_STAGE) && $(AR) rcs $(PATCHED_LIB) *.o
 	@echo "== vendor archive patched: $(RENAMES) -> mdev_* in mdev_startup.o"
 
-$(ELF): $(OBJS) $(PATCHED_LIB) $(LDSCRIPT)
-	$(CC) $(LDFLAGS) $(OBJS) $(PATCHED_LIB) -lgcc -o $@
+# --- link ----------------------------------------------------------------
+$(ELF): $(ALL_OBJS) $(PATCHED_LIB) $(LDSCRIPT)
+	$(CC) $(LDFLAGS) $(ALL_OBJS) $(PATCHED_LIB) -lgcc -o $@
 	@echo "== elf layout"
 	@$(READELF) -h $(ELF) | grep -E 'Entry point|Machine|Flags'
 	@$(READELF) -lW $(ELF) | grep -E '^  LOAD|Type' | sed 's/^/   /'
 	@$(SIZE) -A $(ELF) | grep -E '^\.(init|text|data|bss)'
 
-# Hard proof that the vendor archive is really in the image: the pinmux
-# accessor must be defined (T), the WLAN init graph must be defined, and the
-# archive member must not drag in a second main().
 check-vendor: $(ELF)
 	@$(NM) $(ELF) | grep -q "T GPIO_PinMuxFun" \
 		|| { echo "FEHLER: GPIO_PinMuxFun aus libwmsdk.a nicht gelinkt"; exit 1; }
@@ -110,12 +224,11 @@ check-vendor: $(ELF)
 		|| { echo "FEHLER: GPIO_PinModeConfig aus libwmsdk.a nicht gelinkt"; exit 1; }
 	@test "$$($(NM) $(ELF) | grep -c "^[0-9a-f]* T main$$")" = "1" \
 		|| { echo "FEHLER: mehrdeutige main()-Definition im Image"; exit 1; }
-	@$(NM) $(ELF) | grep -q "T mcufw_gpt0_pwm_init" || { echo "FEHLER: GPT0-PWM-Treiber (mcufw_gpt.c) nicht im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_gpt0_pwm_init" || { echo "FEHLER: GPT0-PWM-Treiber nicht im Image"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_lamp_set" || { echo "FEHLER: mcufw_lamp_set fehlt im Image"; exit 1; }
-	@echo "== lamp pwm: $$($(NM) $(ELF) | grep -c " T mcufw_lamp_") Symbole (GPT0 CH0/1/4/5)"
+	@echo "== lamp pwm: $$($(NM) $(ELF) | grep -c " T mcufw_lamp_") Symbole"
 	@echo "== vendor link: $$($(NM) $(ELF) | grep -c " T GPIO_") Symbole aus $(notdir $(VENDOR_LIB))"
 
-# Phase 3.4 acceptance: WLAN stack linked, miIO channel linked, zero undefined.
 check-net: $(ELF)
 	@for sym in wlan_init_lock_list wlan_init_adapter wlan_init_priv wlan_init_fw wlan_allocate_adapter; do \
 		$(NM) $(ELF) | grep -q " T $$sym$$" \
@@ -125,17 +238,20 @@ check-net: $(ELF)
 		$(NM) $(ELF) | grep -q " T $$sym$$" \
 			|| { echo "FEHLER: $$sym aus libwmsdk.a(mdev_startup.o) nicht gelinkt"; exit 1; }; \
 	done
-	@$(NM) $(ELF) | grep -q " T mcufw_miio_handle" || { echo "FEHLER: miIO-Listener (mcufw_miio.c) nicht im Image"; exit 1; }
-	@$(NM) $(ELF) | grep -q " T mcufw_wlan_bringup" || { echo "FEHLER: mcufw_wlan_bringup fehlt im Image"; exit 1; }
-	@$(NM) $(ELF) | grep -q " T mcufw_selftest" || { echo "FEHLER: mcufw_selftest fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_miio_handle" || { echo "FEHLER: miIO-Listener nicht im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_wlan_bringup" || { echo "FEHLER: mcufw_wlan_bringup fehlt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_selftest" || { echo "FEHLER: mcufw_selftest fehlt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T vTaskStartScheduler" || { echo "FEHLER: FreeRTOS vTaskStartScheduler nicht gelinkt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T udp_new" || { echo "FEHLER: lwIP udp_new nicht gelinkt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T tcp_new" || { echo "FEHLER: lwIP tcp_new nicht gelinkt"; exit 1; }
 	@undef=$$($(NM) -u $(ELF) | wc -l); test "$$undef" = "0" \
 		|| { echo "FEHLER: $$undef undefinierte Symbole im ELF:"; $(NM) -u $(ELF); exit 1; }
-	@echo "== wlan link: $$($(NM) $(ELF) | grep -cE " T (wlan_|CLK_Init|boot_init)") Symbole aus mlan_init.o/mdev_startup.o"
-	@echo "== wlan syms: $$($(NM) $(ELF) | grep -E " T (wlan_|CLK_Init|boot_init)" | awk '{print $$3}' | tr '\n' ' ')"
+	@echo "== rtos: $$($(NM) $(ELF) | grep -cE " T (vTask|xTask|pvPort)") FreeRTOS-Symbole"
+	@echo "== lwip: $$($(NM) $(ELF) | grep -cE " T (udp_|tcp_|pbuf_|netif_|dhcp_)") lwIP-Symbole"
 	@echo "== undefiniert: 0"
 
 container: $(ELF) check-vendor check-net
-	@test -x $(AXF2FW) || { echo "FEHLER: $(AXF2FW) fehlt -- 'make -C .. bootstrap'"; exit 1; }
+	@test -x $(AXF2FW) || { echo "FEHLER: $(AXF2FW) fehlt"; exit 1; }
 	@rm -f $(CONTAINER)
 	cd $(BUILD) && $(AXF2FW) mcufw.elf mcufw_MRVL.bin
 	@test -f $(CONTAINER) || { echo "FEHLER: axf2firmware hat $(CONTAINER) nicht erzeugt"; exit 1; }
@@ -143,14 +259,14 @@ container: $(ELF) check-vendor check-net
 	@ls -l $(CONTAINER)
 	@sha256sum $(CONTAINER)
 
-# Host build of the same network translation units: proves the crypto and the
-# miIO parser against published vectors without any board in the loop.
 HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
+             $(SRC)/mcufw_lan_rpc.c $(SRC)/mcufw_mqtt.c $(SRC)/mcufw_cf.c \
              $(ROOT)/host_test.c
 
 host-test:
 	@mkdir -p $(BUILD)
 	$(CC_HOST) -O2 -g -std=c11 -Wall -Wextra -Werror -I$(SRC) \
+		-DHOST_TEST \
 		$(HOST_SRCS) -o $(BUILD)/host_test
 	$(BUILD)/host_test
 
