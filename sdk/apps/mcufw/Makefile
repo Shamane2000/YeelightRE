@@ -1,4 +1,4 @@
-# mcufw/Makefile -- Phase 3.5: RTOS + lwIP + LAN-RPC + MQTT + CF-Gerüst.
+# mcufw/Makefile -- Phase 3.7: GPT0-Register-Pfad (HAL-Seam host/target).
 #
 # FreeRTOS und lwIP werden aus den SDK-Sources gebaut. Jede Source-Gruppe
 # hat explizite Objekt-Pfade im Build-Verzeichnis, um Kollisionen bei
@@ -67,7 +67,8 @@ MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_rtos.o $(BUILD)/mcufw/mcufw_lwip.o \
               $(BUILD)/mcufw/mcufw_lan_rpc.o $(BUILD)/mcufw/mcufw_mqtt.o \
               $(BUILD)/mcufw/mcufw_cf.o $(BUILD)/mcufw/mcufw_lwip_chksum.o \
-              $(BUILD)/mcufw/mcufw_state.o $(BUILD)/mcufw/mcufw_pwm.o
+              $(BUILD)/mcufw/mcufw_state.o $(BUILD)/mcufw/mcufw_pwm.o \
+              $(BUILD)/mcufw/mcufw_pwm_hal_target.o
 
 # --- FreeRTOS objects ----------------------------------------------------
 FR_DIR := $(SDK_DIR)/sdk/external/freertos
@@ -245,6 +246,8 @@ check-net: $(ELF)
 	@$(NM) $(ELF) | grep -q "T mcufw_state_set_power" || { echo "FEHLER: mcufw_state_set_power fehlt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_pwm_set" || { echo "FEHLER: mcufw_pwm_set fehlt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_pwm_hsv" || { echo "FEHLER: mcufw_pwm_hsv fehlt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_pwm_hal_write" || { echo "FEHLER: Register-Seam mcufw_pwm_hal_write fehlt"; exit 1; }
+	@! $(NM) $(ELF) | grep -q "mcufw_pwm_hal_stub_" || { echo "FEHLER: Host-Stub im Target-Image gelinkt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T vTaskStartScheduler" || { echo "FEHLER: FreeRTOS vTaskStartScheduler nicht gelinkt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T udp_new" || { echo "FEHLER: lwIP udp_new nicht gelinkt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T tcp_new" || { echo "FEHLER: lwIP tcp_new nicht gelinkt"; exit 1; }
@@ -266,6 +269,7 @@ container: $(ELF) check-vendor check-net
 HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
              $(SRC)/mcufw_lan_rpc.c $(SRC)/mcufw_mqtt.c $(SRC)/mcufw_cf.c \
              $(SRC)/mcufw_state.c $(SRC)/mcufw_pwm.c \
+             $(SRC)/mcufw_pwm_hal_host.c \
              $(ROOT)/host_test.c
 
 host-test:

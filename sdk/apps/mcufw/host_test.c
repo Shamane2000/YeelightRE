@@ -8,6 +8,7 @@
  *   - Color Flow parameter parsing
  *   - Lamp state model: range clamping, toggle, name sanitising (3.6)
  *   - PWM backend seam: duty word, recorded mode/calls (3.6)
+ *   - PWM register writes: exact GPT0 CMR0/USER_REQ words per command (3.7)
  *   - RPC/miIO dispatch mutating that state, response carries the new value
  *
  * Exit code 0 = ALL PASS.
@@ -22,6 +23,8 @@
 #include "mcufw_cf.h"
 #include "mcufw_state.h"
 #include "mcufw_pwm.h"
+#include "mcufw_pwm_hal.h"
+#include "mcufw_regs.h"
 #include "mcufw_miio.h"
 #include "mcufw_crypto.h"
 
@@ -268,6 +271,118 @@ static void run_pwm_backend(void)
           pwm->mode == MCUFW_PWM_MODE_OFF && pwm->bright == 0);
 }
 
+/* ---- PWM register writes (3.7) ----------------------------------------- */
+/* Read back one channel's CMR0 from the mocked GPT0 window. */
+static uint32_t cmr0(unsigned ch)
+{
+    return mcufw_pwm_hal_stub_read(GPT_CHAN(ch) + GPT_CH_CMR0);
+}
+
+static void run_pwm_register(void)
+{
+    mcufw_state_t *st = mcufw_state();
+    const mcufw_pwm_stats_t *pwm = mcufw_pwm_stats();
+
+    mcufw_pwm_hal_stub_reset();
+    mcufw_pwm_init();
+
+    check("pwm_register/backend_is_stub",
+          strcmp(mcufw_pwm_hal_name(), "stub-array") == 0);
+    check("pwm_register/init_writes_nothing", mcufw_pwm_hal_stub_writes() == 0u);
+
+    /* 100 % -> duty 0xC350 -> inverted CMR0 0x0000 on both white channels,
+     * colour pair dark (CMR0 = period). */
+    mcufw_pwm_set(100, 4000);
+    check("pwm_register/bright100_ch0_cmr0_0000",
+          cmr0(MCUFW_PWM_CH_WHITE0) == 0x0000u);
+    check("pwm_register/bright100_ch1_cmr0_0000",
+          cmr0(MCUFW_PWM_CH_WHITE1) == 0x0000u);
+    check("pwm_register/bright100_color_pair_dark",
+          cmr0(MCUFW_PWM_CH_COLOR0) == MCUFW_PWM_PERIOD &&
+          cmr0(MCUFW_PWM_CH_COLOR1) == MCUFW_PWM_PERIOD);
+    check("pwm_register/bright100_level_full_scale",
+          pwm->white_level == MCUFW_PWM_PERIOD && pwm->color_level == 0u);
+
+    /* 50 % -> duty 0x61A8 -> CMR0 0xC350 - 0x61A8 = 0x61A8. */
+    mcufw_pwm_set(50, 4000);
+    check("pwm_register/bright50_ch0_cmr0_61a8", cmr0(0) == 0x61a8u);
+    check("pwm_register/bright50_ch1_cmr0_61a8", cmr0(1) == 0x61a8u);
+    /* Every CMR0 write must be followed by its own CHn_CMR_UPDT latch, so
+     * all four channels really take the new match value. */
+    check("pwm_register/all_channels_latched_after_bright50",
+          mcufw_pwm_hal_stub_latched_mask() == 0x33u);
+
+    /* 1 % -> duty 500 counts (0x01F4) -> CMR0 0xC350 - 0x01F4 = 0xC15C.
+     * (Period/100 = 500 is integer, so no rounding occurs; the ticket-level
+     * guess "0xC347" does not reproduce and is superseded by this value.) */
+    mcufw_pwm_set(1, 4000);
+    check("pwm_register/bright1_ch0_cmr0_c15c", cmr0(0) == 0xc15cu);
+    check("pwm_register/bright1_ch1_cmr0_c15c", cmr0(1) == 0xc15cu);
+
+    /* HSV v=80 -> duty 40000 (0x9C40) -> CMR0 10000 (0x2710) on CH4/CH5,
+     * white pair dark. */
+    mcufw_pwm_hsv(200, 60, 80);
+    check("pwm_register/hsv80_color_ch4_cmr0_2710", cmr0(4) == 0x2710u);
+    check("pwm_register/hsv80_color_ch5_cmr0_2710", cmr0(5) == 0x2710u);
+    check("pwm_register/hsv_white_pair_dark",
+          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD);
+    check("pwm_register/hsv_latch_on_ch5",
+          mcufw_pwm_hal_stub_read(GPT_USER_REQ) == GPT_CMR_UPDT(5));
+
+    /* Power off: all four channels to level 0 -> CMR0 = 0xC350 (inverted
+     * polarity: writing 0 would mean FULL brightness). */
+    mcufw_pwm_set(0, 4000);
+    check("pwm_register/off_all_channels_level0",
+          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD &&
+          cmr0(4) == MCUFW_PWM_PERIOD && cmr0(5) == MCUFW_PWM_PERIOD);
+    check("pwm_register/off_levels_zero",
+          pwm->white_level == 0u && pwm->color_level == 0u &&
+          pwm->powered == 0u);
+    check("pwm_register/off_remembers_last_command",
+          pwm->restore_color == 40000u && pwm->restore_white == 0u &&
+          pwm->restore_mode == MCUFW_PWM_MODE_HSV &&
+          pwm->restore_bright == 80u);
+
+    /* Restore after off brings the colour pair back (same duty words). */
+    mcufw_pwm_restore();
+    check("pwm_register/restore_color_cmr0_2710",
+          cmr0(4) == 0x2710u && cmr0(5) == 0x2710u && pwm->powered == 1u);
+    check("pwm_register/restore_keeps_white_dark",
+          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD);
+
+    /* End-to-end through the state model (the path the network front-ends
+     * use): power off must zero all channels, power on must restore the
+     * previous brightness. */
+    mcufw_pwm_hal_stub_reset();
+    mcufw_state_init(st);
+    check("pwm_register/state_init_all_dark",
+          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD &&
+          cmr0(4) == MCUFW_PWM_PERIOD && cmr0(5) == MCUFW_PWM_PERIOD);
+
+    mcufw_state_set_power(st, 1);
+    mcufw_state_set_bright(st, 50);
+    check("pwm_register/state_bright50_cmr0_61a8",
+          cmr0(0) == 0x61a8u && cmr0(1) == 0x61a8u &&
+          cmr0(4) == MCUFW_PWM_PERIOD);
+
+    mcufw_state_set_power(st, 0);
+    check("pwm_register/state_power_off_dark",
+          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD &&
+          cmr0(4) == MCUFW_PWM_PERIOD && cmr0(5) == MCUFW_PWM_PERIOD);
+
+    mcufw_state_set_power(st, 1);
+    check("pwm_register/state_power_on_restores_61a8",
+          cmr0(0) == 0x61a8u && cmr0(1) == 0x61a8u &&
+          cmr0(4) == MCUFW_PWM_PERIOD && cmr0(5) == MCUFW_PWM_PERIOD);
+
+    check("pwm_register/no_out_of_window_access",
+          mcufw_pwm_hal_stub_bad_offset() == 0u);
+    check("pwm_register/no_latch_mismatch",
+          mcufw_pwm_hal_stub_latch_errors() == 0u);
+    check("pwm_register/write_counters_advance",
+          mcufw_pwm_hal_stub_writes() > 0u && pwm->reg_writes > 0u);
+}
+
 /* ---- RPC dispatch mutating the state ----------------------------------- */
 static void run_rpc_state(void)
 {
@@ -473,7 +588,7 @@ static void run_miio_state(void)
 
 int main(void)
 {
-    printf("=== mcufw phase 3.6 host test ===\n");
+    printf("=== mcufw phase 3.7 host test ===\n");
 
     printf("\n[crypto + miIO selftest]\n");
     run_selftest();
@@ -495,6 +610,9 @@ int main(void)
 
     printf("\n[PWM backend]\n");
     run_pwm_backend();
+
+    printf("\n[PWM register writes]\n");
+    run_pwm_register();
 
     printf("\n[LAN-RPC state mutation]\n");
     run_rpc_state();

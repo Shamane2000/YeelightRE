@@ -18,6 +18,7 @@
  */
 #include "mcufw_regs.h"
 #include "mcufw_gpt.h"
+#include "mcufw_pwm_hal.h"
 
 #define MCUFW_GPT0_CLK_DIV   0u   /* CLK_DIV [11:8]:  CLK / 2^div           */
 #define MCUFW_GPT0_CLK_PRE   0u   /* CLK_PRE [23:16]: CLK / (pre + 1)       */
@@ -26,14 +27,17 @@ static const uint8_t lamp_ch[MCUFW_LAMP_CHANNELS] = { 0, 1, 4, 5 };
 
 static uint16_t lamp_level;
 
+/* Phase 3.7: every GPT0 access goes through the register seam, so the host
+ * test can watch this driver's init/latch sequence in the stub array and the
+ * firmware gets the same code with a plain MMIO pointer behind it. */
 static void gpt0_write(uint32_t offset, uint32_t value)
 {
-	REG32(GPT0_BASE + offset) = value;
+	mcufw_pwm_hal_write(offset, value);
 }
 
 static uint32_t gpt0_read(uint32_t offset)
 {
-	return REG32(GPT0_BASE + offset);
+	return mcufw_pwm_hal_read(offset);
 }
 
 void mcufw_gpt0_pwm_init(void)
