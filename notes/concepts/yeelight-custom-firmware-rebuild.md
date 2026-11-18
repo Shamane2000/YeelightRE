@@ -209,6 +209,18 @@ Der Firmware-Version-String bleibt `0.6-phase3.6`: die nach außen sichtbare
 Config-Oberfläche (miIO/LAN-RPC) ist unverändert; der Bump gehört zur ersten
 flash-fähigen Phase. Commit: `40a8727` (Code).
 
+
+### 4.9 Phase 4 — Persistent Config (NVRAM/Flash-Seam) + Power-on-Verhalten
+
+- **mcufw_config-Modul:** 48-Byte-Block (Magic `MCFG` / Version 1 / CRC-32 MRVL-Variante init=0 no-final-xor). Felder: `power`, `bright`, `ct`, `hue`, `sat`, `color_mode`, `name` (sanitised via bestehender State-Grenze).
+- **Link-Time-HAL-Seam** (`mcufw_config_hal_{read,write}`): Host-Backend = Datei/Byte-Array; Target-Backend waehlbar via `MCUFW_CONFIG_BACKEND=stub|flash`. Default `stub` = deklarierter No-Persist-Stub (ehrlich, kein stilles Flash-Tun). `flash`-Backend erst nach Sektor-Nachweis auf Bench-Traeger freizugeben (Phase 5).
+- **Boot-Pfad:** `mcufw_config_boot(mcufw_state())` laedt persistente Config in den autoritativen Global-State **vor** dem ersten `mcufw_state_apply()`. Diagnose-/Clamp-Block arbeitet danach auf lokaler Kopie.
+- **Save-Pfad:** Nur bei expliziter Mutation (`mutations != g_saved_mutations`). Idle-Ticks = **null** Writes. Identischer Save wird uebersprungen (kein Flash-Verschleiss).
+- **Robustheit:** Bad CRC / Magic / Version -> definierte Defaults (`power=0, bright=100, ct=4000, CT-mode, name=""`) + genau **ein** UART-Log. Kein Brick, keine Retry-Schleife.
+- **Host-Test `config_persist`:** 15 Checks (Round-Trip bit-exakt, CRC/Magic/Version-Korruption -> Defaults, Power-On-Duty 0x7530 @40%, Power-Off-Dark 0xC350, Idle-Zero-Writes, Mutation-One-Save, No-Rewrite-After-Save, Name-Sanitising, Identical-Skipped, CRC-Variant-Cross-Check gegen unabhaengig berechnete Konstante 0x2dfd2d88).
+- **Makefile-Guard:** Stub-Backend wird via `objdump` verifiziert (keine `flash_drv_*`-Referenz im Config-HAL-Pfad). Vendor-Lib-Symbole im Image sind erlaubt, solange der Config-Pfad sie nicht referenziert.
+- **Referenzzahlen Phase 4:** Host-Test **134 PASS / 0 FAIL**, ELF-Verifier **41/41 PASS**, `nm -u`=0, Commit `90eaf1f`.
+
 ## §5 Offene Punkte / Folgephasen
 
 | Phase | Inhalt | Status |
