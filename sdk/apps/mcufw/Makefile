@@ -66,7 +66,8 @@ MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_selftest.o $(BUILD)/mcufw/mcufw_shim.o \
               $(BUILD)/mcufw/mcufw_rtos.o $(BUILD)/mcufw/mcufw_lwip.o \
               $(BUILD)/mcufw/mcufw_lan_rpc.o $(BUILD)/mcufw/mcufw_mqtt.o \
-              $(BUILD)/mcufw/mcufw_cf.o $(BUILD)/mcufw/mcufw_lwip_chksum.o
+              $(BUILD)/mcufw/mcufw_cf.o $(BUILD)/mcufw/mcufw_lwip_chksum.o \
+              $(BUILD)/mcufw/mcufw_state.o $(BUILD)/mcufw/mcufw_pwm.o
 
 # --- FreeRTOS objects ----------------------------------------------------
 FR_DIR := $(SDK_DIR)/sdk/external/freertos
@@ -241,6 +242,9 @@ check-net: $(ELF)
 	@$(NM) $(ELF) | grep -q "T mcufw_miio_handle" || { echo "FEHLER: miIO-Listener nicht im Image"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_wlan_bringup" || { echo "FEHLER: mcufw_wlan_bringup fehlt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_selftest" || { echo "FEHLER: mcufw_selftest fehlt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_state_set_power" || { echo "FEHLER: mcufw_state_set_power fehlt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_pwm_set" || { echo "FEHLER: mcufw_pwm_set fehlt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_pwm_hsv" || { echo "FEHLER: mcufw_pwm_hsv fehlt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T vTaskStartScheduler" || { echo "FEHLER: FreeRTOS vTaskStartScheduler nicht gelinkt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T udp_new" || { echo "FEHLER: lwIP udp_new nicht gelinkt"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T tcp_new" || { echo "FEHLER: lwIP tcp_new nicht gelinkt"; exit 1; }
@@ -261,6 +265,7 @@ container: $(ELF) check-vendor check-net
 
 HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
              $(SRC)/mcufw_lan_rpc.c $(SRC)/mcufw_mqtt.c $(SRC)/mcufw_cf.c \
+             $(SRC)/mcufw_state.c $(SRC)/mcufw_pwm.c \
              $(ROOT)/host_test.c
 
 host-test:

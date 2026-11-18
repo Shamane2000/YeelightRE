@@ -23,6 +23,7 @@
  */
 #include "mcufw_crypto.h"
 #include "mcufw_miio.h"
+#include "mcufw_state.h"
 
 /* ------------------------------------------------------------ byte utils -- */
 static uint16_t rd_u16(const uint8_t *p)
@@ -194,6 +195,31 @@ static void str_cpy(char *dst, const char *src, size_t cap)
 	dst[n] = '\0';
 }
 
+/* Does `json` contain the exact quoted token "tok"?  Used for the miIO
+ * `set_ps` argument, which arrives as ["on"], "on" or {"power":"on"} -- all
+ * three spell the state as a quoted token, so a token scan covers every
+ * shape without a JSON parser. */
+static int has_quoted(const char *json, size_t len, const char *tok)
+{
+	size_t tlen = 0;
+	size_t i;
+
+	while (tok[tlen])
+		tlen++;
+
+	for (i = 0; i + tlen + 1u < len; i++) {
+		size_t j = 0;
+
+		if (json[i] != '"')
+			continue;
+		while (j < tlen && json[i + 1u + j] == tok[j])
+			j++;
+		if (j == tlen && json[i + 1u + tlen] == '"')
+			return 1;
+	}
+	return 0;
+}
+
 /* --------------------------------------------------------------- response - */
 struct sbuf {
 	uint8_t *p;
@@ -349,7 +375,62 @@ static int handle_encrypted(mcufw_miio_ctx_t *ctx, const uint8_t *in,
 			ctx->ota_requests++;
 			sb_put(&sb, ",\"result\":[\"ok\"]}");
 		} else if (str_eq(method, "miIO.info")) {
-			sb_put(&sb, ",\"result\":{\"model\":\"mcufw\",\"fw_ver\":\"0.4-phase3.4\"}}");
+			/* Live state, not a static string: a controller that
+			 * polls miIO.info after a set_ps sees the mutation. */
+			const mcufw_state_t *st = mcufw_state();
+
+			sb_put(&sb, ",\"result\":{\"model\":\"mcufw\","
+				   "\"fw_ver\":\"0.6-phase3.6\",\"power\":\"");
+			sb_put(&sb, st->power ? "on" : "off");
+			sb_put(&sb, "\",\"bright\":");
+			sb_dec(&sb, (int32_t)st->bright);
+			sb_put(&sb, ",\"ct\":");
+			sb_dec(&sb, (int32_t)st->ct);
+			sb_put(&sb, ",\"hue\":");
+			sb_dec(&sb, (int32_t)st->hue);
+			sb_put(&sb, ",\"sat\":");
+			sb_dec(&sb, (int32_t)st->sat);
+			sb_put(&sb, ",\"color_mode\":");
+			sb_dec(&sb, (int32_t)st->color_mode);
+			sb_put(&sb, ",\"cf\":");
+			sb_dec(&sb, (int32_t)st->cf_active);
+			sb_put(&sb, ",\"name\":\"");
+			sb_put(&sb, st->name);
+			sb_put(&sb, "\"}}");
+		} else if (str_eq(method, "set_ps")) {
+			/* set_ps is blocked on LAN 55443 and only reachable
+			 * here (UDP 54321) -- that is the whole point of the
+			 * split whitelist.  Mutates the shared lamp state. */
+			mcufw_state_t *st = mcufw_state();
+
+			if (has_quoted(json, plen, "on")) {
+				mcufw_state_set_power(st, 1);
+				sb_put(&sb, ",\"result\":[\"ok\"]}");
+			} else if (has_quoted(json, plen, "off")) {
+				mcufw_state_set_power(st, 0);
+				sb_put(&sb, ",\"result\":[\"ok\"]}");
+			} else {
+				sb_put(&sb, ",\"error\":{\"code\":-32602,"
+					   "\"message\":\"invalid params\"}}");
+			}
+		} else if (str_eq(method, "get_ps")) {
+			const mcufw_state_t *st = mcufw_state();
+
+			sb_put(&sb, ",\"result\":[{\"power\":\"");
+			sb_put(&sb, st->power ? "on" : "off");
+			sb_put(&sb, "\",\"bright\":");
+			sb_dec(&sb, (int32_t)st->bright);
+			sb_put(&sb, ",\"ct\":");
+			sb_dec(&sb, (int32_t)st->ct);
+			sb_put(&sb, ",\"hue\":");
+			sb_dec(&sb, (int32_t)st->hue);
+			sb_put(&sb, ",\"sat\":");
+			sb_dec(&sb, (int32_t)st->sat);
+			sb_put(&sb, ",\"color_mode\":");
+			sb_dec(&sb, (int32_t)st->color_mode);
+			sb_put(&sb, ",\"name\":\"");
+			sb_put(&sb, st->name);
+			sb_put(&sb, "\"}]}");
 		} else {
 			sb_put(&sb, ",\"error\":{\"code\":-32601,\"message\":\"method not supported\"}}");
 		}

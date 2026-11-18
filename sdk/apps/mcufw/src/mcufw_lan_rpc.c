@@ -5,11 +5,19 @@
  * remain cloud/miIO-only (set_ps, get_ps, cfg_lan_ctrl, ota) return
  * code 2 ("method not supported") per the color1_0061 whitelist.
  *
- * Phase 3.5 scope: dispatch skeleton + whitelist enforcement. Real lamp
- * state mutation is wired in phase 3.6/4; here we acknowledge valid
- * methods with a stub OK response so the protocol contract is testable.
+ * Phase 3.6: the allowed methods no longer answer a stub "ok" -- they mutate
+ * the internal lamp state (mcufw_state) and push the result into the PWM
+ * backend.  Every setter response is wire compatible with real clients:
+ * result[0] stays the literal "ok" (python-yeelight/HA only inspect that
+ * element), and the clamped state value follows as result[1] so a controller
+ * can verify what the firmware actually accepted (e.g. set_bright 150 ->
+ * ["ok",100]).  get_prop answers from the same state, so a read-back after a
+ * write proves the mutation.
  */
+#include "mcufw_cf.h"
 #include "mcufw_lan_rpc.h"
+#include "mcufw_pwm.h"
+#include "mcufw_state.h"
 
 /* ---- minimal JSON helpers (no libc, no dynamic alloc) ------------------- */
 static int str_eq(const char *a, const char *b)
@@ -72,6 +80,144 @@ static uint32_t json_int_val(const char *src, size_t avail)
     return v;
 }
 
+/* ---- params array access ------------------------------------------------ *
+ * `params` is the raw JSON substring after "params" (e.g. `["on","smooth",
+ * 500]`).  p_elem() returns the idx-th element:
+ *   1 = JSON string copied into out/out_cap
+ *   2 = number stored in *num
+ *   0 = element missing (or an object/array element, which no supported
+ *       method needs)
+ * Nested objects/arrays are skipped by bracket counting, so a name such as
+ * "1,2,3" inside a string is not mistaken for a separator.
+ */
+static int p_elem(const char *s, unsigned idx, char *out, size_t out_cap,
+                  long *num)
+{
+    unsigned cur = 0;
+
+    if (!s)
+        return 0;
+
+    while (*s == ' ' || *s == '[')
+        s++;
+
+    while (*s) {
+        if (*s == '"') {
+            const char *q = s + 1;
+            size_t n = 0;
+            while (*q && *q != '"') {
+                if (out && n + 1 < out_cap)
+                    out[n] = *q;
+                n++;
+                q++;
+            }
+            if (out && out_cap)
+                out[n < out_cap ? n : out_cap - 1] = '\0';
+            if (cur == idx)
+                return 1;
+            if (*q)
+                q++;
+            s = q;
+        } else if (*s == '{' || *s == '[') {
+            int depth = 0;
+            const char *q = s;
+            while (*q) {
+                if (*q == '{' || *q == '[')
+                    depth++;
+                else if (*q == '}' || *q == ']') {
+                    depth--;
+                    if (depth == 0) { q++; break; }
+                }
+                q++;
+            }
+            if (cur == idx)
+                return 0;
+            s = q;
+        } else if (*s == '-' || (*s >= '0' && *s <= '9')) {
+            long v = 0;
+            int neg = 0;
+            while (*s == '-') { neg = !neg; s++; }
+            while (*s >= '0' && *s <= '9') {
+                v = v * 10 + (long)(*s - '0');
+                s++;
+            }
+            if (num)
+                *num = neg ? -v : v;
+            if (cur == idx)
+                return 2;
+        } else {
+            /* ']' , ',' or stray byte */
+            s++;
+        }
+
+        while (*s == ' ' || *s == ',')
+            s++;
+        cur++;
+    }
+    return 0;
+}
+
+/* ---- result builder (flat JSON array content) --------------------------- */
+struct rbuf {
+    char  *p;
+    size_t cap;
+    size_t len;
+    int    ovf;
+};
+
+static void rb_put(struct rbuf *b, const char *s)
+{
+    while (*s) {
+        if (b->len + 1u >= b->cap) { b->ovf = 1; return; }
+        b->p[b->len++] = *s++;
+    }
+    b->p[b->len] = '\0';
+}
+
+static void rb_sep(struct rbuf *b)
+{
+    if (b->len)
+        rb_put(b, ",");
+}
+
+static void rb_num(struct rbuf *b, long v)
+{
+    char tmp[12];
+    int n = 0;
+    unsigned long u;
+
+    if (v < 0) {
+        rb_put(b, "-");
+        u = (unsigned long)(-(v + 1)) + 1ul;
+    } else {
+        u = (unsigned long)v;
+    }
+    do {
+        tmp[n++] = (char)('0' + (int)(u % 10ul));
+        u /= 10ul;
+    } while (u && n < (int)sizeof(tmp));
+    {
+        char num[16];
+        int k = 0;
+        while (n > 0)
+            num[k++] = tmp[--n];
+        num[k] = '\0';
+        rb_put(b, num);
+    }
+}
+
+static void rb_str(struct rbuf *b, const char *s)
+{
+    rb_put(b, "\"");
+    rb_put(b, s);
+    rb_put(b, "\"");
+}
+
+static void rb_ok(struct rbuf *b)
+{
+    rb_str(b, "ok");
+}
+
 /* ---- whitelist ---------------------------------------------------------- */
 static const char *blocked_methods[] = {
     "set_ps", "get_ps", "cfg_lan_ctrl", "ota"
@@ -125,12 +271,12 @@ int mcufw_rpc_parse(const char *buf, size_t len, mcufw_rpc_request_t *req)
 }
 
 /* ---- dispatcher --------------------------------------------------------- */
-static int rpc_respond(uint32_t id, int have_id, int code, const char *result,
-                       char *out, size_t cap)
+static int rpc_respond(uint32_t id, int have_id, int code, const char *message,
+                       const char *result, char *out, size_t cap)
 {
     static const char hdr[] = "{\"id\":";
     static const char err_pre[] = ",\"error\":{\"code\":";
-    static const char err_post[] = ",\"message\":\"method not supported\"}}";
+    static const char err_msg[] = ",\"message\":\"";
     static const char ok_pre[] = ",\"result\":[";
     static const char ok_post[] = "]}";
     unsigned pos = 0;
@@ -157,8 +303,15 @@ static int rpc_respond(uint32_t id, int have_id, int code, const char *result,
             while (c) { cb[cl++] = (char)('0' + c % 10); c /= 10; }
             while (cl > 0 && pos < cap) out[pos++] = cb[--cl];
         }
-        for (unsigned i = 0; i < sizeof(err_post) - 1 && pos < cap; i++)
-            out[pos++] = err_post[i];
+        for (unsigned i = 0; i < sizeof(err_msg) - 1 && pos < cap; i++)
+            out[pos++] = err_msg[i];
+        if (message) {
+            unsigned mlen = str_len(message);
+            for (unsigned i = 0; i < mlen && pos < cap; i++)
+                out[pos++] = message[i];
+        }
+        for (unsigned i = 0; i < 3 && pos < cap; i++)
+            out[pos++] = "\"}}"[i];
     } else {
         for (unsigned i = 0; i < sizeof(ok_pre) - 1 && pos < cap; i++)
             out[pos++] = ok_pre[i];
@@ -170,19 +323,150 @@ static int rpc_respond(uint32_t id, int have_id, int code, const char *result,
         for (unsigned i = 0; i < sizeof(ok_post) - 1 && pos < cap; i++)
             out[pos++] = ok_post[i];
     }
+    out[pos < cap ? pos : cap - 1] = '\0';
     return (int)pos;
+}
+
+/* get_prop: answer the requested properties from the live state. */
+static void rpc_build_props(const mcufw_state_t *st, const char *params,
+                            struct rbuf *rb)
+{
+    char prop[24];
+
+    for (unsigned idx = 0; ; idx++) {
+        int kind = p_elem(params, idx, prop, sizeof(prop), NULL);
+
+        if (kind != 1)
+            break;
+        rb_sep(rb);
+        if (str_eq(prop, "power")) {
+            rb_str(rb, st->power ? "on" : "off");
+        } else if (str_eq(prop, "bright")) {
+            rb_num(rb, (long)st->bright);
+        } else if (str_eq(prop, "ct")) {
+            rb_num(rb, (long)st->ct);
+        } else if (str_eq(prop, "hue")) {
+            rb_num(rb, (long)st->hue);
+        } else if (str_eq(prop, "sat")) {
+            rb_num(rb, (long)st->sat);
+        } else if (str_eq(prop, "name")) {
+            rb_str(rb, st->name);
+        } else if (str_eq(prop, "color_mode") || str_eq(prop, "mode")) {
+            rb_num(rb, (long)st->color_mode);
+        } else if (str_eq(prop, "cf")) {
+            rb_num(rb, (long)st->cf_active);
+        } else if (str_eq(prop, "hsv")) {
+            char hsv[24];
+            struct rbuf sub;
+            sub.p = hsv; sub.cap = sizeof(hsv); sub.len = 0; sub.ovf = 0;
+            rb_num(&sub, (long)st->hue);
+            rb_put(&sub, ",");
+            rb_num(&sub, (long)st->sat);
+            rb_put(&sub, ",");
+            rb_num(&sub, (long)st->bright);
+            rb_str(rb, hsv);
+        } else {
+            rb_str(rb, "");
+        }
+    }
 }
 
 int mcufw_rpc_dispatch(const mcufw_rpc_request_t *req,
                        char *out, size_t out_cap)
 {
+    mcufw_state_t *st;
+    char result[192];
+    char s1[MCUFW_NAME_MAX + 1];
+    struct rbuf rb;
+    long n1 = 0, n2 = 0, n3 = 0;
+
     if (!req || !out || out_cap == 0)
         return MCUFW_RPC_E_INTERNAL;
 
     if (!mcufw_rpc_method_allowed(req->method))
-        return rpc_respond(req->id, req->have_id, MCUFW_RPC_E_METHOD, NULL,
-                           out, out_cap);
+        return rpc_respond(req->id, req->have_id, MCUFW_RPC_E_METHOD,
+                           "method not supported", NULL, out, out_cap);
 
-    return rpc_respond(req->id, req->have_id, MCUFW_RPC_OK, "\"ok\"",
+    st = mcufw_state();
+    rb.p = result;
+    rb.cap = sizeof(result);
+    rb.len = 0;
+    rb.ovf = 0;
+
+    if (str_eq(req->method, "set_power")) {
+        int on;
+
+        if (p_elem(req->params, 0, s1, sizeof(s1), NULL) != 1)
+            goto bad_param;
+        if (str_eq(s1, "on"))
+            on = 1;
+        else if (str_eq(s1, "off"))
+            on = 0;
+        else
+            goto bad_param;
+        mcufw_state_set_power(st, on);
+        rb_ok(&rb); rb_sep(&rb); rb_num(&rb, (long)st->power);
+    } else if (str_eq(req->method, "toggle")) {
+        mcufw_state_toggle(st);
+        rb_ok(&rb); rb_sep(&rb); rb_num(&rb, (long)st->power);
+    } else if (str_eq(req->method, "set_bright")) {
+        if (p_elem(req->params, 0, NULL, 0, &n1) != 2)
+            goto bad_param;
+        mcufw_state_set_bright(st, n1);
+        rb_ok(&rb); rb_sep(&rb); rb_num(&rb, (long)st->bright);
+    } else if (str_eq(req->method, "set_ct_abx")) {
+        if (p_elem(req->params, 0, NULL, 0, &n1) != 2)
+            goto bad_param;
+        mcufw_state_set_ct(st, n1);
+        rb_ok(&rb); rb_sep(&rb); rb_num(&rb, (long)st->ct);
+    } else if (str_eq(req->method, "set_hsv")) {
+        if (p_elem(req->params, 0, NULL, 0, &n1) != 2)
+            goto bad_param;
+        if (p_elem(req->params, 1, NULL, 0, &n2) != 2)
+            goto bad_param;
+        if (p_elem(req->params, 2, NULL, 0, &n3) != 2)
+            n3 = (long)st->bright; /* third arg may be "smooth" */
+        mcufw_state_set_hsv(st, n1, n2, n3);
+        rb_ok(&rb);
+        rb_sep(&rb); rb_num(&rb, (long)st->hue);
+        rb_sep(&rb); rb_num(&rb, (long)st->sat);
+        rb_sep(&rb); rb_num(&rb, (long)st->bright);
+    } else if (str_eq(req->method, "set_name")) {
+        if (p_elem(req->params, 0, s1, sizeof(s1), NULL) != 1)
+            goto bad_param;
+        mcufw_state_set_name(st, s1);
+        rb_ok(&rb); rb_sep(&rb); rb_str(&rb, st->name);
+    } else if (str_eq(req->method, "start_cf")) {
+        mcufw_cf_params_t cf;
+
+        if (mcufw_cf_parse(req->params, str_len(req->params), &cf) != 0)
+            goto bad_param;
+        (void)p_elem(req->params, 0, NULL, 0, &n1);
+        (void)p_elem(req->params, 1, NULL, 0, &n2);
+        cf.count = (uint32_t)(n1 < 0 ? 0 : n1);
+        cf.action = (uint32_t)(n2 < 0 ? 0 : n2);
+        if (mcufw_cf_start(&cf) != 0)
+            goto bad_param;
+        mcufw_state_set_cf(st, cf.action != MCUFW_CF_ACTION_OFF);
+        rb_ok(&rb); rb_sep(&rb); rb_num(&rb, (long)st->cf_active);
+    } else if (str_eq(req->method, "set_default")) {
+        mcufw_state_set_default(st, 1);
+        rb_ok(&rb);
+    } else if (str_eq(req->method, "get_prop")) {
+        rpc_build_props(st, req->params, &rb);
+    } else {
+        /* Method passes the whitelist gate but has no handler yet
+         * (cron_*, ...) -- answered as "ok" like the 3.5 stub. */
+        rb_ok(&rb);
+    }
+
+    if (rb.ovf)
+        return MCUFW_RPC_E_INTERNAL;
+
+    return rpc_respond(req->id, req->have_id, MCUFW_RPC_OK, NULL, result,
                        out, out_cap);
+
+bad_param:
+    return rpc_respond(req->id, req->have_id, MCUFW_RPC_E_PARAM,
+                       "invalid params", NULL, out, out_cap);
 }

@@ -1,15 +1,14 @@
-/* main.c — mcufw phase 3.5: RTOS + lwIP + LAN-RPC + MQTT + CF skeleton.
+/* main.c — mcufw phase 3.6: lamp state model + PWM backend abstraction.
  *
- * New in 3.5:
- *   - FreeRTOS scheduler starts (mcufw_os_ready() == 1)
- *   - lwIP stack initialised (netif registered, no AP join yet)
- *   - LAN JSON-RPC on TCP 55443 with whitelist enforcement
- *   - MQTT HA auto-discovery payload builder (no connection yet)
- *   - Color Flow (start_cf) dispatch skeleton
- *   - mcufw_shim.c reduced to libc stubs only
+ * New in 3.6:
+ *   - mcufw_state: single lamp state (power/bright/ct/hsv/name/cf/default)
+ *     with range clamping, mutated by both network front-ends
+ *   - mcufw_pwm: PWM backend seam (records mode/duty; real GPT writes = ph.4)
+ *   - LAN-RPC setters mutate the state and answer the clamped value
+ *   - miIO set_ps/get_ps + miIO.info read/write the same state
  *
- * Phase 3.4 kept: WLAN link boundary, miIO UDP 54321, crypto selftest,
- * GPT0 PWM lamp driver, GPIO data/direction semantics.
+ * Phase 3.5 kept: FreeRTOS scheduler, lwIP stack (no AP join), LAN JSON-RPC
+ * whitelist, MQTT discovery payloads, Color Flow dispatch skeleton.
  */
 #include "mcufw_regs.h"
 #include "mcufw_gpt.h"
@@ -20,8 +19,10 @@
 #include "mcufw_lan_rpc.h"
 #include "mcufw_mqtt.h"
 #include "mcufw_cf.h"
+#include "mcufw_pwm.h"
+#include "mcufw_state.h"
 
-#define MCUFW_VERSION "mcufw 0.5-phase3.5"
+#define MCUFW_VERSION "mcufw 0.6-phase3.6"
 
 extern void GPIO_PinMuxFun(int gpio_no, int pin_mux_fun);
 extern void GPIO_PinModeConfig(int gpio_no, int pin_mode);
@@ -325,13 +326,70 @@ static void net_cf_proof(void)
 	uart_puts(" (noop in 3.5)\r\n");
 }
 
+/* Phase 3.6: exercise the state model + PWM seam over UART so the live target
+ * proves the same path the host test asserts (clamping, toggle, duty word). */
+static void net_state_proof(void)
+{
+	mcufw_state_t *st = mcufw_state();
+	const mcufw_pwm_stats_t *pwm;
+
+	mcufw_state_init(st);
+	pwm = mcufw_pwm_stats();
+	uart_puts("state init power ");
+	uart_put_dec(st->power);
+	uart_puts(" bright ");
+	uart_put_dec(st->bright);
+	uart_puts(" ct ");
+	uart_put_dec(st->ct);
+	uart_puts(" mode ");
+	uart_put_dec(st->color_mode);
+	uart_puts("\r\n");
+
+	mcufw_state_set_power(st, 1);
+	mcufw_state_set_bright(st, 150);  /* out of range -> clamp to 100 */
+	uart_puts("state bright-clamp 150 -> ");
+	uart_put_dec(st->bright);
+	uart_puts(" pwm-mode ");
+	uart_put_dec(pwm->mode);
+	uart_puts(" duty ");
+	uart_put_dec(mcufw_pwm_duty(st->bright));
+	uart_puts("\r\n");
+
+	mcufw_state_set_ct(st, 1000);     /* out of range -> clamp to 1700 */
+	uart_puts("state ct-clamp 1000 -> ");
+	uart_put_dec(st->ct);
+	uart_puts("\r\n");
+
+	mcufw_state_set_hsv(st, 200, 60, 80);
+	uart_puts("state hsv 200/60/80 -> pwm-mode ");
+	uart_put_dec(pwm->mode);
+	uart_puts(" logged [");
+	uart_puts(pwm->last_log);
+	uart_puts("]\r\n");
+
+	mcufw_state_toggle(st);
+	uart_puts("state toggle -> power ");
+	uart_put_dec(st->power);
+	uart_puts(" (0 = off) pwm-mode ");
+	uart_put_dec(pwm->mode);
+	uart_puts("\r\n");
+
+	uart_puts("state pwm-calls ");
+	uart_put_dec((uint32_t)pwm->set_calls);
+	uart_puts(" hsv-calls ");
+	uart_put_dec((uint32_t)pwm->hsv_calls);
+	uart_puts(" mutations ");
+	uart_put_dec(st->mutations);
+	uart_puts("\r\n");
+}
+
 int main(void)
 {
 	uart0_init();
 
 	uart_puts("\r\n");
 	uart_puts(MCUFW_VERSION);
-	uart_puts(" -- rtos+lwip+rpc+mqtt+cf, no assoc, no cloud\r\n");
+	uart_puts(" -- rtos+lwip+rpc+mqtt+cf+state, no assoc, no cloud\r\n");
 	uart_puts("boot-marker ");
 	uart_put_hex32(mcufw_boot_marker);
 	uart_puts("\r\n");
@@ -361,6 +419,7 @@ int main(void)
 	net_rpc_whitelist_proof();
 	net_mqtt_proof();
 	net_cf_proof();
+	net_state_proof();
 
 	uart_puts("gpio-irq grer ");
 	uart_put_hex32(GPIO_GRER(0) | GPIO_GRER(1));
