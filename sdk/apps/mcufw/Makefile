@@ -42,8 +42,6 @@ CFLAGS    := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
              -I$(SDK_DIR)/sdk/external/lwip/src/include/ipv4 \
              -I$(SDK_DIR)/sdk/external/lwip/src/include/ipv6 \
              -I$(SDK_DIR)/sdk/external/lwip/contrib/port/FreeRTOS/wmsdk \
-             -I$(SDK_DIR)/sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTClient-C/src \
-             -I$(SDK_DIR)/sdk/external/aws_iot/aws_mqtt_embedded_client_lib/MQTTPacket/src \
              -I$(SDK_DIR)/sdk/src/incl/sdk \
              -I$(SDK_DIR)/sdk/src/incl/platform \
              -I$(SDK_DIR)/sdk/src/incl/platform/os \
@@ -54,7 +52,9 @@ CFLAGS    := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
 # Strip -Werror and add targeted suppressions for known SDK warnings.
 SDK_CFLAGS := $(filter-out -Werror,$(CFLAGS)) \
               -Wno-unused-parameter -Wno-sign-compare \
-              -DTCP_SND_BUF_COUNT=4
+              -DTCP_SND_BUF_COUNT=4 -DLWIP_DISABLE_TCP_SANITY_CHECKS=1 \
+              -include src/sdk_compat.h \
+
 LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
              -nostdlib -nostartfiles -Wl,--build-id=none \
              -Wl,-Map=$(TARGET).map -T$(LDSCRIPT)
@@ -80,20 +80,37 @@ LW_DIR := $(SDK_DIR)/sdk/external/lwip
 LW_OBJS := $(BUILD)/lwip/def.o $(BUILD)/lwip/dhcp.o $(BUILD)/lwip/pbuf.o \
            $(BUILD)/lwip/tcp_out.o $(BUILD)/lwip/raw.o $(BUILD)/lwip/lwip_timers.o \
            $(BUILD)/lwip/dns.o $(BUILD)/lwip/stats.o $(BUILD)/lwip/tcp_in.o \
-           $(BUILD)/lwip/ip4_addr.o $(BUILD)/lwip/ip4.o $(BUILD)/lwip/ip_addr.o \
-           $(BUILD)/lwip/ip_frag.o $(BUILD)/lwip/ip.o \
+           $(BUILD)/lwip/ip4_addr.o \
+           $(BUILD)/lwip/ip_frag.o $(BUILD)/lwip/ip4.o \
            $(BUILD)/lwip/inet.o $(BUILD)/lwip/icmp.o $(BUILD)/lwip/udp.o \
            $(BUILD)/lwip/tcp.o $(BUILD)/lwip/netif.o $(BUILD)/lwip/mem.o \
-           $(BUILD)/lwip/memp.o $(BUILD)/lwip/init.o $(BUILD)/lwip/sys_arch.o
+           $(BUILD)/lwip/igmp.o $(BUILD)/lwip/netifapi.o $(BUILD)/lwip/etharp.o $(BUILD)/lwip/tcpip.o $(BUILD)/lwip/sys_arch.o $(BUILD)/lwip/memp.o $(BUILD)/lwip/init.o
 
-# --- MQTT embedded client objects ----------------------------------------
-MQ_DIR := $(SDK_DIR)/sdk/external/aws_iot/aws_mqtt_embedded_client_lib
-MQ_OBJS := $(BUILD)/mqtt/MQTTClient.o $(BUILD)/mqtt/MQTTConnectClient.o \
-           $(BUILD)/mqtt/MQTTDeserializePublish.o $(BUILD)/mqtt/MQTTFormat.o \
-           $(BUILD)/mqtt/MQTTPacket.o $(BUILD)/mqtt/MQTTSerializePublish.o \
-           $(BUILD)/mqtt/MQTTSubscribeClient.o $(BUILD)/mqtt/MQTTUnsubscribeClient.o
 
-ALL_OBJS := $(MCUFW_OBJS) $(FR_OBJS) $(LW_OBJS) $(MQ_OBJS)
+# --- extra lwIP objects (Phase 3.5a) ------------------------------------
+$(BUILD)/lwip/netifapi.o: $(LW_DIR)/src/api/netifapi.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/sys_arch.o: $(LW_DIR)/contrib/port/FreeRTOS/wmsdk/sys_arch.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/igmp.o: $(LW_DIR)/src/core/ipv4/igmp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/etharp.o: $(LW_DIR)/src/netif/etharp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/tcpip.o: $(LW_DIR)/src/api/tcpip.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/memp.o: $(LW_DIR)/src/core/memp.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/init.o: $(LW_DIR)/src/core/init.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+ALL_OBJS := $(MCUFW_OBJS) $(FR_OBJS) $(LW_OBJS) 
 
 .PHONY: all elf container check-vendor check-net inspect clean host-test
 
@@ -102,12 +119,16 @@ all: container
 elf: $(ELF)
 
 # --- directory creation ---------------------------------------------------
-$(BUILD)/mcufw $(BUILD)/freertos $(BUILD)/lwip $(BUILD)/mqtt $(BUILD)/vendor:
+$(BUILD)/mcufw $(BUILD)/freertos $(BUILD)/lwip $(BUILD)/vendor:
 	@mkdir -p $@
 
 # --- mcufw application compile rules -------------------------------------
 $(BUILD)/mcufw/%.o: $(SRC)/%.c | $(BUILD)/mcufw
 	$(CC) $(CFLAGS) -c $< -o $@
+# main.c lives in app root, not src/ — needs explicit rule
+$(BUILD)/mcufw/main.o: main.c | $(BUILD)/mcufw
+	$(CC) $(CFLAGS) -c $< -o $@
+
 
 # --- FreeRTOS compile rules ----------------------------------------------
 $(BUILD)/freertos/list.o: $(FR_DIR)/Source/list.c | $(BUILD)/freertos
@@ -150,13 +171,9 @@ $(BUILD)/lwip/ip4_addr.o: $(LW_DIR)/src/core/ipv4/ip4_addr.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 $(BUILD)/lwip/ip4.o: $(LW_DIR)/src/core/ipv4/ip4.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/lwip/ip_addr.o: $(LW_DIR)/src/core/ipv4/ip_addr.c | $(BUILD)/lwip
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
 $(BUILD)/mcufw_lwip_chksum.o: src/mcufw_lwip_chksum.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 $(BUILD)/lwip/ip_frag.o: $(LW_DIR)/src/core/ipv4/ip_frag.c | $(BUILD)/lwip
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/lwip/ip.o: $(LW_DIR)/src/core/ipv4/ip.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 $(BUILD)/lwip/inet.o: $(LW_DIR)/src/core/ipv4/inet.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
@@ -170,29 +187,12 @@ $(BUILD)/lwip/netif.o: $(LW_DIR)/src/core/netif.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 $(BUILD)/lwip/mem.o: $(LW_DIR)/src/core/mem.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/lwip/memp.o: $(LW_DIR)/src/core/memp.c | $(BUILD)/lwip
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/lwip/init.o: $(LW_DIR)/src/core/init.c | $(BUILD)/lwip
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+
 $(BUILD)/lwip/sys_arch.o: $(LW_DIR)/contrib/port/FreeRTOS/wmsdk/sys_arch.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 
-# --- MQTT compile rules --------------------------------------------------
-$(BUILD)/mqtt/MQTTClient.o: $(MQ_DIR)/MQTTClient-C/src/MQTTClient.c | $(BUILD)/mqtt
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/mqtt/MQTTConnectClient.o: $(MQ_DIR)/MQTTPacket/src/MQTTConnectClient.c | $(BUILD)/mqtt
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/mqtt/MQTTDeserializePublish.o: $(MQ_DIR)/MQTTPacket/src/MQTTDeserializePublish.c | $(BUILD)/mqtt
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/mqtt/MQTTFormat.o: $(MQ_DIR)/MQTTPacket/src/MQTTFormat.c | $(BUILD)/mqtt
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/mqtt/MQTTPacket.o: $(MQ_DIR)/MQTTPacket/src/MQTTPacket.c | $(BUILD)/mqtt
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/mqtt/MQTTSerializePublish.o: $(MQ_DIR)/MQTTPacket/src/MQTTSerializePublish.c | $(BUILD)/mqtt
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/mqtt/MQTTSubscribeClient.o: $(MQ_DIR)/MQTTPacket/src/MQTTSubscribeClient.c | $(BUILD)/mqtt
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
-$(BUILD)/mqtt/MQTTUnsubscribeClient.o: $(MQ_DIR)/MQTTPacket/src/MQTTUnsubscribeClient.c | $(BUILD)/mqtt
+$(BUILD)/lwip/igmp.o: $(LW_DIR)/src/core/ipv4/igmp.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 
 # --- vendor archive patching ---------------------------------------------

@@ -88,6 +88,8 @@ SECTIONS
 	_bss = _sbss;
 	_heap_2_start = _ebss;
 	_heap_2_end = _estack;
+	_heap_start = _ebss;
+	_heap_end = _estack;
 
 	.nvram (NOLOAD) :
 	{

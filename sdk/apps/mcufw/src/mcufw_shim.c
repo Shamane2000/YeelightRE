@@ -57,3 +57,22 @@ void *memset(void *dst, int c, size_t n)
 }
 
 const unsigned char __ctype_ptr__[384];
+
+/* Phase 3.5a: Stubs for symbols expected by libwmsdk_mcufw.a but missing
+ * in our minimal lwIP build (-nostdlib, no full WMSDK stack).
+ * These are never called at runtime in Phase 3.5a (no socket API usage yet). */
+#include <errno.h>
+
+int *__errno(void) {
+    static int shim_errno = 0;
+    return &shim_errno;
+}
+
+void stats_display(void) { /* stub */ }
+void stats_sock_display(void) { /* stub */ }
+
+/* Phase 3.5a: Socket-API stubs for libwmsdk_mcufw.a.
+ * We use raw lwIP API only; the BSD socket layer is not linked.
+ * These are never called at runtime in this phase. */
+void lwip_socket_init(void) { /* stub */ }
+int lwip_getpeername(int s, void *name, void *namelen) { (void)s; (void)name; (void)namelen; return -1; }
