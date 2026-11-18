@@ -18,6 +18,7 @@ OBJCOPY   := $(CROSS)objcopy
 SIZE      := $(CROSS)size
 READELF   := $(CROSS)readelf
 NM        := $(CROSS)nm
+OBJDUMP   := $(CROSS)objdump
 
 VENDOR_LIB := $(SDK_DIR)/sdk/libs/libwmsdk.a
 VENDOR_STAGE := $(BUILD)/vendor

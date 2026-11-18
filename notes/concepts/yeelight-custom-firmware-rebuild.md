@@ -218,7 +218,7 @@ flash-fähigen Phase. Commit: `40a8727` (Code).
 - **Save-Pfad:** Nur bei expliziter Mutation (`mutations != g_saved_mutations`). Idle-Ticks = **null** Writes. Identischer Save wird uebersprungen (kein Flash-Verschleiss).
 - **Robustheit:** Bad CRC / Magic / Version -> definierte Defaults (`power=0, bright=100, ct=4000, CT-mode, name=""`) + genau **ein** UART-Log. Kein Brick, keine Retry-Schleife.
 - **Host-Test `config_persist`:** 15 Checks (Round-Trip bit-exakt, CRC/Magic/Version-Korruption -> Defaults, Power-On-Duty 0x7530 @40%, Power-Off-Dark 0xC350, Idle-Zero-Writes, Mutation-One-Save, No-Rewrite-After-Save, Name-Sanitising, Identical-Skipped, CRC-Variant-Cross-Check gegen unabhaengig berechnete Konstante 0x2dfd2d88).
-- **Makefile-Guard:** Stub-Backend wird via `objdump` verifiziert (keine `flash_drv_*`-Referenz im Config-HAL-Pfad). Vendor-Lib-Symbole im Image sind erlaubt, solange der Config-Pfad sie nicht referenziert.
+- **Makefile-Guard:** Stub-Backend wird via `$(OBJDUMP)` verifiziert (Toolchain-Variable seit Phase-4-Fix definiert) (keine `flash_drv_*`-Referenz im Config-HAL-Pfad). Vendor-Lib-Symbole im Image sind erlaubt, solange der Config-Pfad sie nicht referenziert.
 - **Referenzzahlen Phase 4:** Host-Test **134 PASS / 0 FAIL**, ELF-Verifier **41/41 PASS**, `nm -u`=0, Commit `90eaf1f`.
 
 ## §5 Offene Punkte / Folgephasen
