@@ -45,3 +45,19 @@ const char *mcufw_config_hal_name(void)
 {
 	return "stub-no-persist";
 }
+
+int mcufw_devcfg_hal_read(uint8_t *buf, size_t len)
+{
+	(void)buf;
+	(void)len;
+	g_stub_reads++;
+	return -1;
+}
+
+int mcufw_devcfg_hal_write(const uint8_t *buf, size_t len)
+{
+	(void)buf;
+	(void)len;
+	g_stub_writes++;
+	return 0;
+}

@@ -17,6 +17,9 @@ static uint8_t  g_store[MCUFW_CONFIG_SIZE];
 static uint32_t g_writes;
 static uint32_t g_reads;
 static int      g_valid;
+static uint8_t  g_devcfg_store[256];
+static size_t   g_devcfg_len;
+static int      g_devcfg_valid;
 
 int mcufw_config_hal_read(uint8_t *buf, size_t len)
 {
@@ -57,6 +60,9 @@ void mcufw_config_hal_stub_reset(void)
 	g_writes = 0u;
 	g_reads = 0u;
 	g_valid = 0;
+	g_devcfg_len = 0u;
+	g_devcfg_valid = 0;
+	for (i = 0; i < sizeof(g_devcfg_store); i++) g_devcfg_store[i] = 0xffu;
 }
 
 void mcufw_config_hal_stub_invalidate(void)
@@ -82,4 +88,24 @@ uint32_t mcufw_config_hal_stub_reads(void)
 int mcufw_config_hal_stub_valid(void)
 {
 	return g_valid;
+}
+
+int mcufw_devcfg_hal_read(uint8_t *buf, size_t len)
+{
+	if (!buf || len == 0u || !g_devcfg_valid || len != g_devcfg_len)
+		return -1;
+	for (size_t i = 0; i < len; i++)
+		buf[i] = g_devcfg_store[i];
+	return 0;
+}
+
+int mcufw_devcfg_hal_write(const uint8_t *buf, size_t len)
+{
+	if (!buf || len == 0u || len > sizeof(g_devcfg_store))
+		return -1;
+	for (size_t i = 0; i < len; i++)
+		g_devcfg_store[i] = buf[i];
+	g_devcfg_len = len;
+	g_devcfg_valid = 1;
+	return 0;
 }

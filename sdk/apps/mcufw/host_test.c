@@ -35,6 +35,9 @@
 #include "mcufw_config.h"
 #include "mcufw_config_hal.h"
 #include "mcufw_rollback.h"
+#include "mcufw_devcfg.h"
+#include "mcufw_ota.h"
+#include "mcufw_http_portal.h"
 
 static unsigned total_pass;
 static unsigned total_fail;
@@ -602,7 +605,7 @@ static void run_miio_state(void)
     rc = miio_call(&ctx, "{\"id\":3,\"method\":\"miIO.info\"}",
                    rsp, sizeof(rsp), &rsp_len, plain, sizeof(plain));
     check("miio/info/live_state",
-          rc == MCUFW_MIIO_OK && strstr(plain, "0.6-phase3.6") != NULL &&
+          rc == MCUFW_MIIO_OK && strstr(plain, "0.8-phase4b.") != NULL &&
           strstr(plain, "\"power\":\"on\"") != NULL &&
           strstr(plain, "\"bright\":55") != NULL &&
           strstr(plain, "\"name\":\"Kitchen\"") != NULL);
@@ -1113,6 +1116,7 @@ static void run_pwm_rgbw(void)
 
 
 static void run_wlan_rtos(void);
+static void run_devcfg_ota_portal(void);
 int main(void)
 {
     printf("=== mcufw phase 4 host test ===\n");
@@ -1160,6 +1164,9 @@ int main(void)
 
     printf("\n[WLAN + RTOS state machine]\n");
     run_wlan_rtos();
+
+    printf("\n[Device config + Self-OTA + HTTP portal]\n");
+    run_devcfg_ota_portal();
     printf("\n=== TOTAL: %u PASS, %u FAIL ===\n", total_pass, total_fail);
     return total_fail == 0 ? 0 : 1;
 }
@@ -1306,4 +1313,194 @@ static void run_wlan_rtos(void)
 
     /* Restore default HAL for any subsequent tests */
     mcufw_wlan_set_hal(NULL);
+}
+
+
+/* ========================================================================== */
+/* Phase 4b.3: Device config + Self-OTA + HTTP portal tests                   */
+/* ========================================================================== */
+extern void mcufw_ota_hal_stub_reset(const uint8_t *payload, size_t payload_len,
+                                     int http_status, uint32_t declared_len,
+                                     uint8_t chunked, uint32_t slot_max);
+extern void mcufw_ota_hal_stub_set_open_err(int err);
+extern uint32_t mcufw_ota_hal_stub_begin_calls(void);
+extern uint32_t mcufw_ota_hal_stub_abort_calls(void);
+extern uint32_t mcufw_ota_hal_stub_complete_calls(void);
+extern uint32_t mcufw_ota_hal_stub_reboot_calls(void);
+extern int      mcufw_ota_hal_stub_active_slot(void);
+extern size_t   mcufw_ota_hal_stub_written(void);
+
+static void md5_to_hex(const uint8_t d[16], char out[33])
+{
+    static const char hx[] = "0123456789abcdef";
+    for (unsigned i = 0; i < 16u; i++) {
+        out[i * 2u] = hx[(d[i] >> 4) & 0xfu];
+        out[i * 2u + 1u] = hx[d[i] & 0xfu];
+    }
+    out[32] = '\0';
+}
+
+static void run_devcfg_ota_portal(void)
+{
+    char json[640], rsp[1536];
+    size_t rlen = 0;
+    mcufw_state_t st;
+
+    /* --- 1. Device config defaults, apply, masking, roundtrip, power-on -- */
+    mcufw_config_hal_stub_reset();
+    check("devcfg/boot_defaults", mcufw_devcfg_boot() != 0 &&
+          strcmp(mcufw_devcfg()->mqtt_host, "192.168.1.106") == 0 &&
+          mcufw_devcfg()->mqtt_port == 1883u &&
+          mcufw_devcfg()->pwm_freq_hz == 768u);
+
+    const char *good_cfg =
+        "{\"wifi_ssid\":\"MyHomeWiFi\",\"wifi_psk\":\"SuperSecret88\","
+        "\"mqtt_host\":\"192.168.1.106\",\"mqtt_port\":1883,"
+        "\"mqtt_user\":\"yeelight\",\"mqtt_pass\":\"MqttPass99\","
+        "\"power_on_mode\":\"off\",\"pwm_freq_hz\":4000,"
+        "\"default_transition_ms\":750,\"gamma_enable\":1}";
+    check("devcfg/apply_valid_json",
+          mcufw_devcfg_apply_json(good_cfg, strlen(good_cfg)) == 0);
+    check("devcfg/wlan_synced",
+          mcufw_wlan_cfg()->provisioned == 1u &&
+          strcmp(mcufw_wlan_cfg()->ssid, "MyHomeWiFi") == 0);
+
+    check("devcfg/to_json_masks_secrets",
+          mcufw_devcfg_to_json(mcufw_devcfg(), json, sizeof(json)) > 0 &&
+          strstr(json, "SuperSecret88") == NULL &&
+          strstr(json, "MqttPass99") == NULL &&
+          strstr(json, "\"wifi_psk\":\"***\"") != NULL &&
+          strstr(json, "\"mqtt_pass\":\"***\"") != NULL);
+
+    /* Reboot reload preserves config + masked "***" update keeps secrets */
+    mcufw_devcfg_defaults(mcufw_devcfg());
+    check("devcfg/persist_roundtrip",
+          mcufw_devcfg_boot() == 0 &&
+          strcmp(mcufw_devcfg()->wifi_ssid, "MyHomeWiFi") == 0 &&
+          strcmp(mcufw_devcfg()->wifi_psk, "SuperSecret88") == 0 &&
+          mcufw_devcfg()->pwm_freq_hz == 4000u &&
+          mcufw_devcfg()->power_on_mode == MCUFW_POWERON_OFF);
+
+    const char *masked_update = "{\"wifi_psk\":\"***\",\"pwm_freq_hz\":8000}";
+    check("devcfg/masked_keeps_psk",
+          mcufw_devcfg_apply_json(masked_update, strlen(masked_update)) == 0 &&
+          strcmp(mcufw_devcfg()->wifi_psk, "SuperSecret88") == 0 &&
+          mcufw_devcfg()->pwm_freq_hz == 8000u);
+
+    /* Invalid configs are atomically rejected */
+    const char *bad_psk = "{\"wifi_ssid\":\"BadNet\",\"wifi_psk\":\"123\"}";
+    check("devcfg/reject_short_psk",
+          mcufw_devcfg_apply_json(bad_psk, strlen(bad_psk)) != 0 &&
+          strcmp(mcufw_devcfg()->wifi_ssid, "MyHomeWiFi") == 0);
+    const char *bad_freq = "{\"pwm_freq_hz\":99999}";
+    check("devcfg/reject_bad_pwm_freq",
+          mcufw_devcfg_apply_json(bad_freq, strlen(bad_freq)) != 0 &&
+          mcufw_devcfg()->pwm_freq_hz == 8000u);
+
+    /* Power-on mode off / default */
+    mcufw_state_init(&st);
+    st.power = 1u; st.bright = 45u;
+    mcufw_devcfg_apply_power_on(&st);
+    check("devcfg/poweron_off_forces_off", st.power == 0u);
+    check("devcfg/poweron_default",
+          mcufw_devcfg_set_power_on_mode(MCUFW_POWERON_DEFAULT) == 0 &&
+          mcufw_devcfg_apply_power_on(&st) == 0 &&
+          st.power == 1u && st.bright == 100u && st.ct == 4000u);
+
+    /* --- 2. Build a synthetic MRVL test image for OTA tests --------------- */
+    static uint8_t fake_fw[1024];
+    memset(fake_fw, 0xA5, sizeof(fake_fw));
+    fake_fw[0] = 'M'; fake_fw[1] = 'R'; fake_fw[2] = 'V'; fake_fw[3] = 'L';
+    fake_fw[4] = 0x7bu; fake_fw[5] = 0xf1u; fake_fw[6] = 0x9cu; fake_fw[7] = 0x2eu;
+    fake_fw[12] = 3u; fake_fw[13] = 0u; fake_fw[14] = 0u; fake_fw[15] = 0u;
+    uint8_t digest[16];
+    char md5_ok[33], md5_bad[33];
+    mcufw_md5(fake_fw, sizeof(fake_fw), digest);
+    md5_to_hex(digest, md5_ok);
+    strcpy(md5_bad, md5_ok);
+    md5_bad[0] = (md5_bad[0] == 'a') ? 'b' : 'a';
+
+    mcufw_ota_set_hal(NULL);
+
+    /* Happy path */
+    mcufw_ota_reset();
+    mcufw_rollback_test_reset_state();
+    mcufw_rollback_set_counter(3u);
+    mcufw_ota_hal_stub_reset(fake_fw, sizeof(fake_fw), 200, sizeof(fake_fw), 0u, 0x60000u);
+    check("ota/happy_path_ok",
+          mcufw_ota_execute("http://192.168.1.10/fw.bin", md5_ok) == 0);
+    check("ota/happy_slot_switched_rebooted",
+          mcufw_ota_state()->status == MCUFW_OTA_DONE &&
+          mcufw_ota_hal_stub_written() == sizeof(fake_fw) &&
+          mcufw_ota_hal_stub_complete_calls() == 1u &&
+          mcufw_ota_hal_stub_abort_calls() == 0u &&
+          mcufw_ota_hal_stub_reboot_calls() == 1u &&
+          mcufw_ota_hal_stub_active_slot() == 1 &&
+          mcufw_rollback_read_counter() == 0u);
+
+    /* HTTP 404 dry-run safety: never even calls slot_begin! */
+    mcufw_ota_reset();
+    mcufw_ota_hal_stub_reset(fake_fw, sizeof(fake_fw), 404, sizeof(fake_fw), 0u, 0x60000u);
+    check("ota/404_never_touches_flash",
+          mcufw_ota_execute("http://192.168.1.10/missing.bin", md5_ok) < 0 &&
+          mcufw_ota_state()->status == MCUFW_OTA_ERR &&
+          mcufw_ota_hal_stub_begin_calls() == 0u &&
+          mcufw_ota_hal_stub_complete_calls() == 0u &&
+          mcufw_ota_hal_stub_active_slot() == 0);
+
+    /* Bad MRVL magic: aborted BEFORE slot_begin! */
+    uint8_t bad_magic_fw[128];
+    memcpy(bad_magic_fw, fake_fw, sizeof(bad_magic_fw));
+    bad_magic_fw[0] = 'X';
+    mcufw_ota_reset();
+    mcufw_ota_hal_stub_reset(bad_magic_fw, sizeof(bad_magic_fw), 200, sizeof(bad_magic_fw), 0u, 0x60000u);
+    check("ota/bad_magic_no_flash",
+          mcufw_ota_execute("http://192.168.1.10/bad.bin", "") < 0 &&
+          mcufw_ota_hal_stub_begin_calls() == 0u);
+
+    /* Oversize guard (> slot_max): aborted before flash writes! */
+    mcufw_ota_reset();
+    mcufw_ota_hal_stub_reset(fake_fw, sizeof(fake_fw), 200, 0x70000u, 0u, 0x60000u);
+    check("ota/oversize_rejected",
+          mcufw_ota_execute("http://192.168.1.10/big.bin", "") < 0 &&
+          mcufw_ota_hal_stub_written() == 0u &&
+          mcufw_ota_hal_stub_complete_calls() == 0u);
+
+    /* Bad MD5: slot_abort called, zero slot switch or reboot */
+    mcufw_ota_reset();
+    mcufw_ota_hal_stub_reset(fake_fw, sizeof(fake_fw), 200, sizeof(fake_fw), 0u, 0x60000u);
+    check("ota/bad_md5_aborts_no_switch",
+          mcufw_ota_execute("http://192.168.1.10/fw.bin", md5_bad) < 0 &&
+          mcufw_ota_hal_stub_abort_calls() == 1u &&
+          mcufw_ota_hal_stub_complete_calls() == 0u &&
+          mcufw_ota_hal_stub_reboot_calls() == 0u &&
+          mcufw_ota_hal_stub_active_slot() == 0);
+
+    /* HTTP Portal endpoints (GET /, GET /api/config, POST /api/ota, POST /api/rollback) */
+    mcufw_ota_reset();
+    const char *req_get = "GET / HTTP/1.1\r\nHost: 192.168.4.1\r\n\r\n";
+    check("http/get_root_html",
+          mcufw_http_handle_request(req_get, strlen(req_get), rsp, sizeof(rsp), &rlen) == 0 &&
+          strstr(rsp, "200 OK") != NULL && strstr(rsp, "<html") != NULL);
+
+    char req_ota[512];
+    snprintf(req_ota, sizeof(req_ota),
+             "POST /api/ota HTTP/1.1\r\nContent-Length: 90\r\n\r\n"
+             "{\"app_url\":\"http://192.168.1.10/new.bin\",\"file_md5\":\"%s\"}",
+             md5_ok);
+    mcufw_ota_hal_stub_reset(fake_fw, sizeof(fake_fw), 200, sizeof(fake_fw), 0u, 0x60000u);
+    check("http/post_ota_queued_and_serviced",
+          mcufw_http_handle_request(req_ota, strlen(req_ota), rsp, sizeof(rsp), &rlen) == 0 &&
+          strstr(rsp, "202 Accepted") != NULL &&
+          mcufw_ota_state()->status == MCUFW_OTA_QUEUED &&
+          mcufw_ota_service() == 1 &&
+          mcufw_ota_state()->status == MCUFW_OTA_DONE);
+
+    mcufw_ota_reset();
+    const char *req_rb = "POST /api/rollback HTTP/1.1\r\nContent-Length: 2\r\n\r\n{}";
+    check("http/post_rollback_scheduled",
+          mcufw_http_handle_request(req_rb, strlen(req_rb), rsp, sizeof(rsp), &rlen) == 0 &&
+          strstr(rsp, "rollback_scheduled") != NULL &&
+          mcufw_ota_state()->rollback_pending == 1);
+    mcufw_ota_reset();
 }

@@ -47,6 +47,7 @@ static mcufw_wlan_cfg_t nvram_cfg;
 static mcufw_wlan_cfg_t fallback_cfg;
 static mcufw_wlan_state_t current_state = MCUFW_WLAN_STATE_INIT;
 
+__attribute__((used))
 static const mcufw_wlan_anchor_t anchors[] = {
 	{ "wlan_init_lock_list",   "libwmsdk.a(mlan_init.o)",    wlan_init_lock_list },
 	{ "wlan_init_adapter",     "libwmsdk.a(mlan_init.o)",    wlan_init_adapter },
@@ -130,6 +131,24 @@ const mcufw_wlan_cfg_t *mcufw_wlan_default_cfg(void)
 	fallback_cfg.reserved[1] = 0;
 	fallback_cfg.reserved[2] = 0;
 	return &fallback_cfg;
+}
+
+int mcufw_wlan_set_cfg(const char *ssid, const char *psk, uint8_t provisioned)
+{
+	mcufw_wlan_cfg_t tmp;
+
+	scpy(tmp.ssid, ssid ? ssid : "", sizeof(tmp.ssid));
+	scpy(tmp.psk, psk ? psk : "", sizeof(tmp.psk));
+	tmp.magic = MCUFW_WLAN_NVRAM_MAGIC;
+	tmp.muid = MCUFW_WLAN_DID;
+	tmp.provisioned = provisioned ? 1u : 0u;
+	tmp.reserved[0] = 0u;
+	tmp.reserved[1] = 0u;
+	tmp.reserved[2] = 0u;
+	if (tmp.provisioned && mcufw_wlan_cfg_validate(&tmp) != MCUFW_WLAN_OK)
+		return -1;
+	nvram_cfg = tmp;
+	return 0;
 }
 
 const mcufw_wlan_cfg_t *mcufw_wlan_cfg(void)

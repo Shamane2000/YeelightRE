@@ -21,11 +21,7 @@ static void mcufw_zero(uint8_t *dst, size_t n)
 }
 
 /* ------------------------------------------------------------------- MD5 --- */
-typedef struct {
-	uint32_t h[4];
-	uint64_t bytes;
-	uint8_t  buf[64];
-} md5_ctx_t;
+typedef mcufw_md5_ctx_t md5_ctx_t;
 
 static const uint32_t md5_k[64] = {
 	0xd76aa478u, 0xe8c7b756u, 0x242070dbu, 0xc1bdceeeu,
@@ -100,7 +96,7 @@ static void md5_block(md5_ctx_t *c, const uint8_t *p)
 	c->h[3] += d;
 }
 
-static void md5_init(md5_ctx_t *c)
+void mcufw_md5_init(md5_ctx_t *c)
 {
 	c->h[0] = 0x67452301u;
 	c->h[1] = 0xefcdab89u;
@@ -110,7 +106,7 @@ static void md5_init(md5_ctx_t *c)
 	mcufw_zero(c->buf, sizeof(c->buf));
 }
 
-static void md5_update(md5_ctx_t *c, const uint8_t *data, size_t len)
+void mcufw_md5_update(md5_ctx_t *c, const uint8_t *data, size_t len)
 {
 	size_t fill = (size_t)(c->bytes & 63u);
 
@@ -138,7 +134,7 @@ static void md5_update(md5_ctx_t *c, const uint8_t *data, size_t len)
 		mcufw_copy(c->buf, data, len);
 }
 
-static void md5_final(md5_ctx_t *c, uint8_t out[MCUFW_MD5_LEN])
+void mcufw_md5_final(md5_ctx_t *c, uint8_t out[MCUFW_MD5_LEN])
 {
 	uint64_t bits = c->bytes * 8u;
 	uint8_t pad[72];
@@ -150,7 +146,7 @@ static void md5_final(md5_ctx_t *c, uint8_t out[MCUFW_MD5_LEN])
 	for (unsigned i = 0; i < 8u; i++)
 		pad[padlen + i] = (uint8_t)(bits >> (8u * i));
 
-	md5_update(c, pad, padlen + 8u);
+	mcufw_md5_update(c, pad, padlen + 8u);
 
 	for (unsigned i = 0; i < 4u; i++) {
 		out[i * 4 + 0] = (uint8_t)(c->h[i]);
@@ -164,9 +160,9 @@ void mcufw_md5(const uint8_t *data, size_t len, uint8_t out[MCUFW_MD5_LEN])
 {
 	md5_ctx_t c;
 
-	md5_init(&c);
-	md5_update(&c, data, len);
-	md5_final(&c, out);
+	mcufw_md5_init(&c);
+	mcufw_md5_update(&c, data, len);
+	mcufw_md5_final(&c, out);
 }
 
 void mcufw_md5_2(const uint8_t *a, size_t alen,
@@ -174,10 +170,10 @@ void mcufw_md5_2(const uint8_t *a, size_t alen,
 {
 	md5_ctx_t c;
 
-	md5_init(&c);
-	md5_update(&c, a, alen);
-	md5_update(&c, b, blen);
-	md5_final(&c, out);
+	mcufw_md5_init(&c);
+	mcufw_md5_update(&c, a, alen);
+	mcufw_md5_update(&c, b, blen);
+	mcufw_md5_final(&c, out);
 }
 
 /* ------------------------------------------------------------------- AES --- */

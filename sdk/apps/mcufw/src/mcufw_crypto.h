@@ -26,6 +26,16 @@
 #define MCUFW_MD5_LEN     16u
 #define MCUFW_AES_BLOCK   16u
 
+typedef struct {
+	uint32_t h[4];
+	uint64_t bytes;
+	uint8_t  buf[64];
+} mcufw_md5_ctx_t;
+
+void mcufw_md5_init(mcufw_md5_ctx_t *c);
+void mcufw_md5_update(mcufw_md5_ctx_t *c, const uint8_t *data, size_t len);
+void mcufw_md5_final(mcufw_md5_ctx_t *c, uint8_t out[MCUFW_MD5_LEN]);
+
 /* MD5 over one contiguous buffer (hello checksum + key derivation). */
 void mcufw_md5(const uint8_t *data, size_t len, uint8_t out[MCUFW_MD5_LEN]);
 

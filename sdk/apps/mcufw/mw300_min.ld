@@ -65,6 +65,7 @@ SECTIONS
 	{
 		. = ALIGN(4);
 		_sdata = .;
+		KEEP(*(.data.mcufw_boot_marker))
 		*(.data)
 		*(.data.*)
 		. = ALIGN(4);

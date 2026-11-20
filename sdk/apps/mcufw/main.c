@@ -27,6 +27,8 @@
 #include "mcufw_config.h"
 #include "mcufw_config_hal.h"
 #include "mcufw_rollback.h"
+#include "mcufw_devcfg.h"
+#include "mcufw_ota.h"
 
 #ifndef HOST_TEST
 #include "FreeRTOS.h"
@@ -34,7 +36,7 @@
 extern void mcufw_rtos_start(void);
 #endif
 
-#define MCUFW_VERSION "mcufw 0.7-phase4b.2"
+#define MCUFW_VERSION "mcufw 0.8-phase4b.3"
 
 extern void GPIO_PinMuxFun(int gpio_no, int pin_mux_fun);
 extern void GPIO_PinModeConfig(int gpio_no, int pin_mode);
@@ -46,6 +48,7 @@ extern void GPIO_PinModeConfig(int gpio_no, int pin_mode);
 #define MCUFW_UART_BAUD 115200u
 #endif
 
+__attribute__((section(".data.mcufw_boot_marker"), used))
 uint32_t mcufw_boot_marker = 0x4D435546u;
 uint32_t mcufw_pinmux_word_txd;
 uint32_t mcufw_pinmux_word_rxd;
@@ -158,6 +161,8 @@ static void lamp_banner(void)
 	}
 	uart_puts(" cnt ");
 	uart_put_hex32(mcufw_lamp_counter());
+	uart_puts(" pinmode ");
+	uart_put_hex32((uint32_t)(uintptr_t)&GPIO_PinModeConfig);
 	uart_puts("\r\n");
 }
 
@@ -319,9 +324,7 @@ static void net_state_proof(void)
 	mcufw_state_t *st;
 	const mcufw_pwm_stats_t *pwm;
 
-	mcufw_config_init();
-	(void)mcufw_config_boot(mcufw_state());
-	proof = *mcufw_state();
+	mcufw_state_init(&proof);
 	st = &proof;
 	pwm = mcufw_pwm_stats();
 	uart_puts("state init power ");
@@ -378,7 +381,7 @@ static void net_state_proof(void)
  * four channels are programmable; the permanent path is the state path.
  * 0 disables the ramp completely (build with -DMCUFW_BOOT_SWEEP_ITERS=0). */
 #ifndef MCUFW_BOOT_SWEEP_ITERS
-#define MCUFW_BOOT_SWEEP_ITERS 3u
+#define MCUFW_BOOT_SWEEP_ITERS 0u
 #endif
 
 /* THIS IS THE ONLY CALL SITE OF mcufw_lamp_set() IN THE WHOLE IMAGE.
@@ -386,7 +389,9 @@ static void net_state_proof(void)
  * `make check-owner` fails the build if a second call site shows up. */
 static void boot_ramp_sweep(void)
 {
-	for (uint32_t iter = 1; iter <= (uint32_t)MCUFW_BOOT_SWEEP_ITERS; iter++) {
+	static volatile uint32_t boot_sweep_iters = (uint32_t)MCUFW_BOOT_SWEEP_ITERS;
+
+	for (uint32_t iter = 1; iter <= boot_sweep_iters; iter++) {
 		uint16_t step = (uint16_t)(iter & 0x3fu);
 
 		mcufw_lamp_set((uint16_t)(step * (MCUFW_LAMP_PERIOD / 64u)));
@@ -443,9 +448,56 @@ static void runtime_loop(void)
 	};
 	int bind_rc;
 
+	/* Phase 4b.3: WMPT/sys_psm rollback & config boot run at top of runtime_task
+	 * (once FreeRTOS is started so psm-v2 os_rwlock_* works), BEFORE net/WLAN. */
+	{
+		mcufw_rollback_result_t rb = mcufw_rollback_early_boot_check();
+		if (rb == MCUFW_RB_ROLLED_BACK) {
+			uart_puts("ROLLBACK: passive slot activated, resetting...\r\n");
+			for (;;) ;
+		}
+		if (rb == MCUFW_RB_ERROR) {
+			uart_puts("ROLLBACK: backend error, continuing with caution\r\n");
+		}
+	}
+	{
+		const mcufw_config_stats_t *cfg;
+		mcufw_config_init();
+		(void)mcufw_config_boot(mcufw_state());
+		(void)mcufw_devcfg_boot();
+		(void)mcufw_devcfg_apply_power_on(mcufw_state());
+		cfg = mcufw_config_stats();
+		uart_puts("config backend ");
+		uart_puts(mcufw_config_hal_name());
+		uart_puts(" load ");
+		uart_put_dec((uint32_t)(cfg->last_status == MCUFW_CFG_OK ? 0u : 1u));
+		uart_puts(" defaults ");
+		uart_put_dec(cfg->load_defaults);
+		uart_puts(" power ");
+		uart_put_dec(mcufw_state()->power);
+		uart_puts(" bright ");
+		uart_put_dec(mcufw_state()->bright);
+		uart_puts("\r\n");
+		if (cfg->last_log[0]) {
+			uart_puts(cfg->last_log);
+			uart_puts("\r\n");
+		}
+	}
+	mcufw_pwm_invalidate();
+	mcufw_state_apply(mcufw_state());
+	uart_puts("owner mcufw_pwm lamp ");
+	uart_put_dec(mcufw_pwm_stats()->ch_level[3]);
+	uart_put_dec(mcufw_pwm_stats()->ch_level[0]);
+	uart_puts(" cmr0 ");
+	uart_put_hex32(mcufw_pwm_cmr0(0));
+	uart_puts("\r\n");
+
 	mcufw_net_init(NULL, MCUFW_MIIO_DID);
 	bind_rc = mcufw_net_lwip_bind();
 	mcufw_net_bind_transport(mcufw_net_lwip_transport());
+#ifndef HOST_TEST
+	mcufw_net_bind_http(mcufw_net_lwip_http_rx, mcufw_net_lwip_http_tx);
+#endif
 
 	uart_puts("net bind udp ");
 	uart_put_dec((uint32_t)MCUFW_MIIO_PORT);
@@ -501,17 +553,6 @@ int main(void)
 {
 	uart0_init();
 
-	/* Phase 4b.1: Early-Boot A/B-Rollback-Check VOR jeglicher RTOS/WLAN/Config-Init. */
-	mcufw_rollback_result_t rb = mcufw_rollback_early_boot_check();
-	if (rb == MCUFW_RB_ROLLED_BACK) {
-		/* Sollte nie hier ankommen (reset ist noreturn), aber falls doch: */
-		uart_puts("ROLLBACK: passive slot activated, resetting...\r\n");
-		for (;;) ; /* Safety hang; HAL reset sollte bereits erfolgt sein. */
-	}
-	if (rb == MCUFW_RB_ERROR) {
-		uart_puts("ROLLBACK: backend error, continuing with caution");
-	}
-
 	uart_puts("\r\n");
 	uart_puts(MCUFW_VERSION);
 	uart_puts(" -- rtos+lwip+rpc+mqtt+cf+state, no assoc, no cloud\r\n");
@@ -539,6 +580,7 @@ int main(void)
 	lamp_banner();
 
 	net_selftest();
+	mcufw_ota_reset(); /* clear dummy selftest URL */
 	/* net_wlan() moved to runtime_task (needs RTOS running) */
 	net_miio();
 	net_rpc_whitelist_proof();
@@ -558,43 +600,6 @@ int main(void)
 	uart_puts("banner-ready\r\n");
 
 	boot_ramp_sweep();
-
-	/* Phase 4: Power-on-Verhalten.  Die Config ist bereits geladen (vor dem
-	 * ersten Apply); jetzt erst wird sie auf die Kanaele geschrieben.
-	 *   war an  -> wieder an mit letzter Helligkeit/Farbe
-	 *   war aus -> alle vier Kanaele dunkel (CMR0 = Periode)
-	 * Genau EINE UART-Zeile zum Config-Ladeergebnis, keine Retry-Schleife. */
-	{
-		const mcufw_config_stats_t *cfg = mcufw_config_stats();
-
-		uart_puts("config backend ");
-		uart_puts(mcufw_config_hal_name());
-		uart_puts(" load ");
-		uart_put_dec((uint32_t)(cfg->last_status == MCUFW_CFG_OK ? 0u : 1u));
-		uart_puts(" defaults ");
-		uart_put_dec(cfg->load_defaults);
-		uart_puts(" power ");
-		uart_put_dec(mcufw_state()->power);
-		uart_puts(" bright ");
-		uart_put_dec(mcufw_state()->bright);
-		uart_puts("\r\n");
-		if (cfg->last_log[0]) {
-			uart_puts(cfg->last_log);
-			uart_puts("\r\n");
-		}
-	}
-
-	/* Hand the lamp over to the state path: the ramp wrote CMR0 behind the
-	 * PWM backend's back, so forget the programmed command and re-apply the
-	 * authoritative state once.  From here on mcufw_pwm is the only writer. */
-	mcufw_pwm_invalidate();
-	mcufw_state_apply(mcufw_state());
-	uart_puts("owner mcufw_pwm lamp ");
-	uart_put_dec(mcufw_pwm_stats()->ch_level[3]);
-	uart_put_dec(mcufw_pwm_stats()->ch_level[0]);
-	uart_puts(" cmr0 ");
-	uart_put_hex32(mcufw_pwm_cmr0(0));
-	uart_puts("\r\n");
 
 	/* Ab hier ist der State-Pfad der einzige Schreiber; ein Tick speichert
 	 * nur bei einer NEUEN Mutation, ein Idle-Tick schreibt 0 Config-Bytes. */

@@ -81,6 +81,7 @@ const mcufw_wlan_hal_t *mcufw_wlan_get_hal(void);
 /* --- Public API ---------------------------------------------------------- */
 const mcufw_wlan_cfg_t *mcufw_wlan_default_cfg(void);
 const mcufw_wlan_cfg_t *mcufw_wlan_cfg(void);
+int mcufw_wlan_set_cfg(const char *ssid, const char *psk, uint8_t provisioned);
 int mcufw_wlan_cfg_validate(const mcufw_wlan_cfg_t *cfg);
 unsigned mcufw_wlan_link_proof(mcufw_wlan_anchor_t *out, unsigned max);
 

@@ -27,6 +27,9 @@ int mcufw_config_hal_write(const uint8_t *buf, size_t len);
 /* Backend identity for the UART banner and the host-test sanity check. */
 const char *mcufw_config_hal_name(void);
 
+int mcufw_devcfg_hal_read(uint8_t *buf, size_t len);
+int mcufw_devcfg_hal_write(const uint8_t *buf, size_t len);
+
 /* ---- host backend only -------------------------------------------------- */
 void     mcufw_config_hal_stub_reset(void);      /* erase window + counters  */
 void     mcufw_config_hal_stub_invalidate(void); /* mark window unreadable   */

@@ -25,4 +25,7 @@ int mcufw_net_lwip_bound(void);
 /* Transport for mcufw_net_init(). */
 const mcufw_net_transport_t *mcufw_net_lwip_transport(void);
 
+int  mcufw_net_lwip_http_rx(char *buf, size_t cap, size_t *len);
+void mcufw_net_lwip_http_tx(const char *buf, size_t len);
+
 #endif /* MCUFW_NET_LWIP_H */

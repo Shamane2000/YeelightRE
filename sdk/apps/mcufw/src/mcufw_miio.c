@@ -24,6 +24,7 @@
 #include "mcufw_crypto.h"
 #include "mcufw_miio.h"
 #include "mcufw_state.h"
+#include "mcufw_ota.h"
 
 /* ------------------------------------------------------------ byte utils -- */
 static uint16_t rd_u16(const uint8_t *p)
@@ -369,18 +370,27 @@ static int handle_encrypted(mcufw_miio_ctx_t *ctx, const uint8_t *in,
 		sb_dec(&sb, id);
 
 		if (str_eq(method, "miIO.ota")) {
-			/* Only OTA channel that exists at all (docs/06 §1.2).
-			 * 3.4 answers the RPC; the download itself (app_url,
-			 * file_md5, proc=dnld) is phase 5. */
+			char ota_url[MCUFW_OTA_URL_MAX];
+			char ota_md5[MCUFW_OTA_MD5_HEX + 4u];
+			ota_url[0] = '\0';
+			ota_md5[0] = '\0';
 			ctx->ota_requests++;
-			sb_put(&sb, ",\"result\":[\"ok\"]}");
+			if (json_find_string(json, plen, "app_url", ota_url, sizeof(ota_url)) > 0) {
+				(void)json_find_string(json, plen, "file_md5", ota_md5, sizeof(ota_md5));
+				if (mcufw_ota_queue(ota_url, ota_md5) == 0)
+					sb_put(&sb, ",\"result\":[\"ok\"]}");
+				else
+					sb_put(&sb, ",\"error\":{\"code\":-32602,\"message\":\"ota rejected\"}}");
+			} else {
+				sb_put(&sb, ",\"error\":{\"code\":-32602,\"message\":\"missing app_url\"}}");
+			}
 		} else if (str_eq(method, "miIO.info")) {
 			/* Live state, not a static string: a controller that
 			 * polls miIO.info after a set_ps sees the mutation. */
 			const mcufw_state_t *st = mcufw_state();
 
 			sb_put(&sb, ",\"result\":{\"model\":\"mcufw\","
-				   "\"fw_ver\":\"0.6-phase3.6\",\"power\":\"");
+				   "\"fw_ver\":\"0.8-phase4b.3\",\"power\":\"");
 			sb_put(&sb, st->power ? "on" : "off");
 			sb_put(&sb, "\",\"bright\":");
 			sb_dec(&sb, (int32_t)st->bright);

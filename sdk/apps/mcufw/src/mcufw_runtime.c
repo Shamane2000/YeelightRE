@@ -21,6 +21,7 @@
 #include "mcufw_runtime.h"
 #include "mcufw_config.h"
 #include "mcufw_state.h"
+#include "mcufw_ota.h"
 
 static mcufw_runtime_io_t g_io;
 static mcufw_runtime_stats_t g_rt;
@@ -139,6 +140,8 @@ void mcufw_runtime_tick(void)
 	/* 2. network channels, bounded and non-blocking ------------------------ */
 	mcufw_net_pump_udp();
 	mcufw_net_pump_tcp();
+	(void)mcufw_net_pump_http();
+	(void)mcufw_ota_service();
 	{
 		/* Mirror the transport counters instead of counting the pump's
 		 * return value (which is "replies sent", not "datagrams read"). */

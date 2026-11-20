@@ -35,6 +35,7 @@ CFLAGS    := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
              -O2 -g -std=c11 -Wall -Wextra -Werror \
              -ffreestanding -fno-common -fno-unwind-tables \
              -fno-asynchronous-unwind-tables -fno-ident \
+             -ffunction-sections -fdata-sections \
              -ffile-prefix-map=$(REPO_ROOT)=/yeelight-re \
              -I$(SRC) \
              -I$(SDK_DIR)/sdk/external/freertos/Source/include \
@@ -59,13 +60,13 @@ SDK_CFLAGS := $(filter-out -Werror,$(CFLAGS)) \
 
 LDFLAGS   := -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mabi=aapcs \
              -nostdlib -nostartfiles -Wl,--build-id=none \
-             -Wl,-Map=$(TARGET).map -T$(LDSCRIPT)
+             -Wl,-Map=$(TARGET).map -Wl,--gc-sections -T$(LDSCRIPT)
 
 # --- phase 4: persistent config backend ----------------------------------
 # stub  = deklarierter No-Persist-Stub (Default; ehrlich, kein stilles Tun).
 # flash = echtes flash_drv_* Backend, OPT-IN und erst nach Sektor-Nachweis
 #         auf dem Bench-Traeger freizugeben (Phase 5).
-MCUFW_CONFIG_BACKEND ?= stub
+MCUFW_CONFIG_BACKEND ?= flash
 ifeq ($(MCUFW_CONFIG_BACKEND),flash)
 CONFIG_HAL_OBJ := $(BUILD)/mcufw/mcufw_config_hal_target_flash.o
 else ifeq ($(MCUFW_CONFIG_BACKEND),stub)
@@ -75,7 +76,7 @@ $(error MCUFW_CONFIG_BACKEND muss stub oder flash sein (aktuell: $(MCUFW_CONFIG_
 endif
 
 # --- phase 4b.1: rollback backend ---------------------------------------
-MCUFW_ROLLBACK_BACKEND ?= stub
+MCUFW_ROLLBACK_BACKEND ?= flash
 ifeq ($(MCUFW_ROLLBACK_BACKEND),flash)
 ROLLBACK_HAL_OBJ := $(BUILD)/mcufw/mcufw_rollback_hal_target_flash.o
 else ifeq ($(MCUFW_ROLLBACK_BACKEND),stub)
@@ -97,7 +98,9 @@ MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_net.o $(BUILD)/mcufw/mcufw_net_lwip.o \
               $(BUILD)/mcufw/mcufw_runtime.o \
               $(BUILD)/mcufw/mcufw_config.o $(CONFIG_HAL_OBJ) \
-              $(BUILD)/mcufw/mcufw_rollback.o $(ROLLBACK_HAL_OBJ)
+              $(BUILD)/mcufw/mcufw_rollback.o $(ROLLBACK_HAL_OBJ) \
+              $(BUILD)/mcufw/mcufw_devcfg.o $(BUILD)/mcufw/mcufw_ota.o \
+              $(BUILD)/mcufw/mcufw_ota_hal_target.o $(BUILD)/mcufw/mcufw_http_portal.o
 
 # --- FreeRTOS objects ----------------------------------------------------
 FR_DIR := $(SDK_DIR)/sdk/external/freertos
@@ -338,6 +341,7 @@ check-owner-elf: $(ELF)
 	@$(NM) $(ELF) | grep -q "T mcufw_config_load" || { echo "FEHLER: mcufw_config_load fehlt im Image"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_config_save" || { echo "FEHLER: mcufw_config_save fehlt im Image"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_config_hal_write" || { echo "FEHLER: Config-Seam mcufw_config_hal_write fehlt"; exit 1; }
+	@! $(NM) $(ELF) | grep -q "mcufw_ota_hal_stub_" || { echo "FEHLER: Host-OTA-Stub im Target-Image gelinkt"; exit 1; }
 	@! $(NM) $(ELF) | grep -q "mcufw_config_hal_stub_" || { echo "FEHLER: Host-Config-Stub im Target-Image gelinkt"; exit 1; }
 	@echo "== owner-elf: runtime-owner + beide Netz-Pumps + Config-Seam im Image, keine Host-Stubs"
 
@@ -345,10 +349,13 @@ check-owner-elf: $(ELF)
 # Der Default-Build darf KEIN flash_drv_* referenzieren (Sektor unbewiesen).
 # Ein Flash-Build muss sie dagegen wirklich linken -- beides wird geprueft.
 check-config: $(ELF)
+	@! (grep -rn "0x070000" $(SRC)/*.c | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(\*|/\*|//)') || { echo "FEHLER: Verbotener Roh-Offset 0x070000 in src/*.c!"; exit 1; }
 	@if [ "$(MCUFW_CONFIG_BACKEND)" = "flash" ]; then \
-		$(NM) $(ELF) | grep -q "T flash_drv_write" \
-			|| { echo "FEHLER: Backend=flash, aber flash_drv_write nicht gelinkt"; exit 1; }; \
-		echo "== config: Backend flash (flash_drv_* gelinkt, Sektor-Nachweis Phase 5 offen)"; \
+		for sym in sys_psm_init psm_get_variable psm_set_variable part_set_active_partition rfget_get_passive_firmware; do \
+			$(NM) $(ELF) | grep -q " T $$sym$$" \
+				|| { echo "FEHLER: Backend=flash, aber $$sym nicht gelinkt"; exit 1; }; \
+		done; \
+		echo "== config: Backend flash (sys_psm + WMPT verifiziert, kein 0x070000)"; \
 	else \
 		if $(OBJDUMP) -d $(ELF) | grep -A1 "<mcufw_config_hal_read>:" | grep -q "flash_drv_"; then \
 			echo "FEHLER: Backend=stub, aber mcufw_config_hal_read ruft flash_drv_* auf"; exit 1; \
@@ -392,6 +399,8 @@ HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
              $(SRC)/mcufw_config.c $(SRC)/mcufw_config_hal_host.c \
              $(SRC)/mcufw_rollback.c $(SRC)/mcufw_rollback_hal_host.c \
              $(SRC)/mcufw_wlan.c \
+             $(SRC)/mcufw_devcfg.c $(SRC)/mcufw_ota.c \
+             $(SRC)/mcufw_ota_hal_host.c $(SRC)/mcufw_http_portal.c \
              $(ROOT)/host_test.c
 
 host-test:

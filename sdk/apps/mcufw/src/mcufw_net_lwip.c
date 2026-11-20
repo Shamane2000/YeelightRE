@@ -25,6 +25,7 @@
 
 #include "mcufw_lan_rpc.h"
 #include "mcufw_net_lwip.h"
+#include "mcufw_http_portal.h"
 
 /* Provided by mcufw_lwip.c (no public header yet). */
 int mcufw_lwip_ready(void);
@@ -236,6 +237,128 @@ static void lwip_tcp_send(const char *buf, size_t len)
 	(void)tcp_output(g_conn_pcb);
 }
 
+
+/* ----------------------------------------------------------- HTTP 8080 --- */
+static struct tcp_pcb *g_http_listen;
+static struct tcp_pcb *g_http_conn;
+static char   g_http_rx[1024];
+static size_t g_http_rx_len;
+static int    g_http_ready;
+
+static int find_hdr_end_and_clen(const char *b, size_t len, size_t *hdr_end, size_t *clen)
+{
+	*hdr_end = 0u;
+	*clen = 0u;
+	for (size_t i = 0u; i + 3u < len; i++) {
+		if (b[i] == '\r' && b[i + 1u] == '\n' &&
+		    b[i + 2u] == '\r' && b[i + 3u] == '\n') {
+			*hdr_end = i + 4u;
+			break;
+		}
+	}
+	if (*hdr_end == 0u) return 0;
+	for (size_t i = 0u; i + 16u < *hdr_end; i++) {
+		static const char k[] = "Content-Length:";
+		size_t m = 0u;
+		while (k[m]) {
+			char a = b[i + m];
+			char c = k[m];
+			if (a >= 'A' && a <= 'Z') a = (char)(a + 32);
+			if (c >= 'A' && c <= 'Z') c = (char)(c + 32);
+			if (a != c) break;
+			m++;
+		}
+		if (k[m] == '\0') {
+			size_t p = i + m, v = 0u;
+			while (p < *hdr_end && (b[p] == ' ' || b[p] == '\t')) p++;
+			while (p < *hdr_end && b[p] >= '0' && b[p] <= '9') {
+				v = v * 10u + (size_t)(b[p] - '0');
+				p++;
+			}
+			*clen = v;
+			break;
+		}
+	}
+	return (len >= *hdr_end + *clen) ? 1 : 0;
+}
+
+static err_t http_sent_cb(void *arg, struct tcp_pcb *pcb, u16_t len)
+{
+	(void)arg; (void)len;
+	if (pcb == g_http_conn) {
+		tcp_recv(pcb, NULL);
+		tcp_sent(pcb, NULL);
+		tcp_arg(pcb, NULL);
+		g_http_conn = NULL;
+		(void)tcp_close(pcb);
+	}
+	return ERR_OK;
+}
+
+static err_t http_recv_cb(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+{
+	(void)arg;
+	if (!p) {
+		tcp_recv(pcb, NULL);
+		tcp_sent(pcb, NULL);
+		tcp_arg(pcb, NULL);
+		if (pcb == g_http_conn) g_http_conn = NULL;
+		if (err == ERR_OK) (void)tcp_close(pcb);
+		return ERR_OK;
+	}
+	if (!g_http_ready && p->tot_len > 0u) {
+		for (struct pbuf *q = p; q != NULL; q = q->next) {
+			const char *d = (const char *)q->payload;
+			for (u16_t i = 0u; i < q->len && g_http_rx_len + 1u < sizeof(g_http_rx); i++)
+				g_http_rx[g_http_rx_len++] = d[i];
+		}
+		g_http_rx[g_http_rx_len] = '\0';
+		size_t hd = 0u, cl = 0u;
+		if (find_hdr_end_and_clen(g_http_rx, g_http_rx_len, &hd, &cl))
+			g_http_ready = 1;
+	}
+	tcp_recved(pcb, p->tot_len);
+	pbuf_free(p);
+	return ERR_OK;
+}
+
+static err_t http_accept_cb(void *arg, struct tcp_pcb *newpcb, err_t err)
+{
+	(void)arg;
+	if (err != ERR_OK || !newpcb) return ERR_VAL;
+	if (g_http_conn) {
+		tcp_abort(newpcb);
+		return ERR_ABRT;
+	}
+	g_http_conn = newpcb;
+	g_http_rx_len = 0u;
+	g_http_ready = 0;
+	tcp_arg(newpcb, NULL);
+	tcp_recv(newpcb, http_recv_cb);
+	tcp_sent(newpcb, http_sent_cb);
+	tcp_accepted(g_http_listen);
+	return ERR_OK;
+}
+
+int mcufw_net_lwip_http_rx(char *buf, size_t cap, size_t *len)
+{
+	if (!g_http_ready || !buf || !len || g_http_rx_len + 1u > cap)
+		return 0;
+	for (size_t i = 0u; i <= g_http_rx_len; i++) buf[i] = g_http_rx[i];
+	*len = g_http_rx_len;
+	g_http_rx_len = 0u;
+	g_http_ready = 0;
+	return 1;
+}
+
+void mcufw_net_lwip_http_tx(const char *buf, size_t len)
+{
+	if (!g_http_conn || len == 0u) return;
+	if (tcp_sndbuf(g_http_conn) < (u16_t)len) return;
+	if (tcp_write(g_http_conn, buf, (u16_t)len, TCP_WRITE_FLAG_COPY) != ERR_OK) return;
+	(void)tcp_output(g_http_conn);
+}
+
 /* --------------------------------------------------------------- binding -- */
 int mcufw_net_lwip_bound(void)
 {
@@ -274,6 +397,20 @@ int mcufw_net_lwip_bind(void)
 			if (g_listen_pcb) {
 				tcp_arg(g_listen_pcb, NULL);
 				tcp_accept(g_listen_pcb, tcp_accept_cb);
+			}
+		}
+	}
+
+	g_http_listen = tcp_new();
+	if (g_http_listen) {
+		if (tcp_bind(g_http_listen, &g_any_addr, (u16_t)MCUFW_HTTP_PORT) != ERR_OK) {
+			(void)tcp_close(g_http_listen);
+			g_http_listen = NULL;
+		} else {
+			g_http_listen = tcp_listen_with_backlog(g_http_listen, 1);
+			if (g_http_listen) {
+				tcp_arg(g_http_listen, NULL);
+				tcp_accept(g_http_listen, http_accept_cb);
 			}
 		}
 	}

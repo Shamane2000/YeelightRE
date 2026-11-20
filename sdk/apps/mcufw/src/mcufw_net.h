@@ -84,4 +84,8 @@ mcufw_miio_ctx_t *mcufw_net_miio(void);
 unsigned mcufw_net_pump_udp(void);
 unsigned mcufw_net_pump_tcp(void);
 
+void mcufw_net_bind_http(int (*rx)(char *buf, size_t cap, size_t *len),
+                         void (*tx)(const char *buf, size_t len));
+unsigned mcufw_net_pump_http(void);
+
 #endif /* MCUFW_NET_H */

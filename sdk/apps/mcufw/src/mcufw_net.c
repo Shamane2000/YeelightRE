@@ -1,3 +1,4 @@
+#include "mcufw_http_portal.h"
 /*
  * mcufw_net.c -- pump functions for the two lamp front-ends (phase 3.8).
  *
@@ -139,4 +140,31 @@ unsigned mcufw_net_pump_tcp(void)
 	}
 
 	return sent;
+}
+
+static int  (*g_http_rx)(char *buf, size_t cap, size_t *len);
+static void (*g_http_tx)(const char *buf, size_t len);
+
+void mcufw_net_bind_http(int (*rx)(char *buf, size_t cap, size_t *len),
+                         void (*tx)(const char *buf, size_t len))
+{
+	g_http_rx = rx;
+	g_http_tx = tx;
+}
+
+unsigned mcufw_net_pump_http(void)
+{
+	static char req[1024];
+	static char rsp[1536];
+	size_t rlen = 0u, wlen = 0u;
+
+	if (!g_http_rx || !g_http_tx)
+		return 0u;
+	if (g_http_rx(req, sizeof(req), &rlen) != 1)
+		return 0u;
+	if (mcufw_http_handle_request(req, rlen, rsp, sizeof(rsp), &wlen) == 0 && wlen > 0u) {
+		g_http_tx(rsp, wlen);
+		return 1u;
+	}
+	return 0u;
 }
