@@ -1112,6 +1112,7 @@ static void run_pwm_rgbw(void)
 }
 
 
+static void run_wlan_rtos(void);
 int main(void)
 {
     printf("=== mcufw phase 4 host test ===\n");
@@ -1156,6 +1157,153 @@ int main(void)
     run_rollback();
     printf("\n[PWM RGBW 4-ch + GPIO44]\n");
     run_pwm_rgbw();
+
+    printf("\n[WLAN + RTOS state machine]\n");
+    run_wlan_rtos();
     printf("\n=== TOTAL: %u PASS, %u FAIL ===\n", total_pass, total_fail);
     return total_fail == 0 ? 0 : 1;
+}
+
+/* ========================================================================== */
+/* Phase 4b.2: WLAN + RTOS state machine tests (HAL seam)                     */
+/* ========================================================================== */
+#include "mcufw_wlan.h"
+
+static int stub_init_ok, stub_connect_ok, stub_uap_ok;
+static int stub_init_called, stub_connect_called, stub_uap_called;
+static char stub_last_ssid[33], stub_last_psk[64];
+
+static int stub_wlan_init(void) { stub_init_called++; return stub_init_ok ? 0 : -1; }
+static int stub_wlan_connect(char *ssid, char *psk) {
+    stub_connect_called++;
+    if (ssid) { strncpy(stub_last_ssid, ssid, 32); stub_last_ssid[32]=0; }
+    if (psk)  { strncpy(stub_last_psk, psk, 63); stub_last_psk[63]=0; }
+    return stub_connect_ok ? 0 : -1;
+}
+static int stub_uap_start(const char *ssid, const char *psk) {
+    stub_uap_called++;
+    if (ssid) { strncpy(stub_last_ssid, ssid, 32); stub_last_ssid[32]=0; }
+    (void)psk;
+    return stub_uap_ok ? 0 : -1;
+}
+static void stub_wlan_deinit(void) {}
+
+static const mcufw_wlan_hal_t test_hal = {
+    stub_wlan_init, stub_wlan_connect, stub_uap_start, stub_wlan_deinit
+};
+
+static void reset_stubs(void) {
+    stub_init_ok = 1; stub_connect_ok = 1; stub_uap_ok = 1;
+    stub_init_called = 0; stub_connect_called = 0; stub_uap_called = 0;
+    memset(stub_last_ssid, 0, sizeof(stub_last_ssid));
+    memset(stub_last_psk, 0, sizeof(stub_last_psk));
+    mcufw_wlan_set_hal(&test_hal);
+}
+
+static void run_wlan_rtos(void)
+{
+    mcufw_wlan_cfg_t cfg;
+    mcufw_wlan_report_t rep;
+    int rc;
+    char ap_ssid[33];
+
+    /* --- Setup AP SSID generator ----------------------------------------- */
+    mcufw_wlan_setup_ap_ssid(ap_ssid, sizeof(ap_ssid), 0x05eb8034u);
+    check("wlan/setup_ap_ssid_prefix", strncmp(ap_ssid, "yeelink-light-", 14) == 0);
+    check("wlan/setup_ap_ssid_did", strstr(ap_ssid, "05eb8034") != NULL);
+
+    /* --- Unprovisioned -> AP fallback ------------------------------------ */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 0;
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/unprov_rc_ok", rc == MCUFW_WLAN_OK);
+    check("wlan/unprov_state_ap", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_AP_FALLBACK);
+    check("wlan/unprov_uap_called", stub_uap_called == 1);
+    check("wlan/unprov_connect_not_called", stub_connect_called == 0);
+    check("wlan/unprov_init_called", stub_init_called == 1);
+
+    /* --- Provisioned + connect OK -> STA connected ----------------------- */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    strcpy(cfg.ssid, "TestNet");
+    strcpy(cfg.psk, "12345678");
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/sta_ok_rc", rc == MCUFW_WLAN_OK);
+    check("wlan/sta_ok_state", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_STA_CONNECTED);
+    check("wlan/sta_ok_connect_called", stub_connect_called == 1);
+    check("wlan/sta_ok_ssid", strcmp(stub_last_ssid, "TestNet") == 0);
+    check("wlan/sta_ok_uap_not_called", stub_uap_called == 0);
+
+    /* --- Provisioned + connect FAIL -> AP fallback ----------------------- */
+    reset_stubs();
+    stub_connect_ok = 0;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    strcpy(cfg.ssid, "FailNet");
+    strcpy(cfg.psk, "abcdefgh");
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/sta_fail_rc_ok", rc == MCUFW_WLAN_OK);
+    check("wlan/sta_fail_state_ap", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_AP_FALLBACK);
+    check("wlan/sta_fail_connect_called", stub_connect_called == 1);
+    check("wlan/sta_fail_uap_called", stub_uap_called == 1);
+
+    /* --- wlan_init fail -> ERROR state ----------------------------------- */
+    reset_stubs();
+    stub_init_ok = 0;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 0;
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/init_fail_state_error", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_ERROR);
+
+    /* --- Invalid SSID when provisioned=1 -> E_SSID ----------------------- */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    cfg.ssid[0] = 0; /* empty SSID */
+    strcpy(cfg.psk, "12345678");
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/bad_ssid_rc", rc == MCUFW_WLAN_E_SSID);
+    check("wlan/bad_ssid_state_error", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_ERROR);
+
+    /* --- Invalid PSK when provisioned=1 -> E_PSK ------------------------- */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    strcpy(cfg.ssid, "ValidNet");
+    strcpy(cfg.psk, "short"); /* < 8 chars */
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/bad_psk_rc", rc == MCUFW_WLAN_E_PSK);
+    check("wlan/bad_psk_state_error", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_ERROR);
+
+    /* --- Deferred rollback confirmation (only after threshold & wlan) ---- */
+    mcufw_rollback_test_reset_state();
+    mcufw_rollback_set_counter(3u);
+    uint32_t ticks = 0u;
+    int confirmed = 0;
+    check("wlan/confirm_not_ready_stays_3",
+          mcufw_rollback_deferred_tick(&ticks, &confirmed, 0, 5u) == 0 &&
+          confirmed == 0 && mcufw_rollback_read_counter() == 3u);
+    for (unsigned i = 0; i < 4u; i++) {
+        (void)mcufw_rollback_deferred_tick(&ticks, &confirmed, 1, 5u);
+    }
+    check("wlan/confirm_before_threshold_stays_3",
+          confirmed == 0 && mcufw_rollback_read_counter() == 3u);
+    check("wlan/confirm_at_threshold_clears",
+          mcufw_rollback_deferred_tick(&ticks, &confirmed, 1, 5u) == 1 &&
+          confirmed == 1 && mcufw_rollback_read_counter() == 0u);
+    mcufw_rollback_set_counter(2u);
+    check("wlan/confirm_once_only",
+          mcufw_rollback_deferred_tick(&ticks, &confirmed, 1, 5u) == 0 &&
+          mcufw_rollback_read_counter() == 2u);
+
+    /* Restore default HAL for any subsequent tests */
+    mcufw_wlan_set_hal(NULL);
 }

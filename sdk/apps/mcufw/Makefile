@@ -79,7 +79,7 @@ MCUFW_ROLLBACK_BACKEND ?= stub
 ifeq ($(MCUFW_ROLLBACK_BACKEND),flash)
 ROLLBACK_HAL_OBJ := $(BUILD)/mcufw/mcufw_rollback_hal_target_flash.o
 else ifeq ($(MCUFW_ROLLBACK_BACKEND),stub)
-ROLLBACK_HAL_OBJ := $(BUILD)/mcufw/mcufw_rollback_hal_host.o
+ROLLBACK_HAL_OBJ := $(BUILD)/mcufw/mcufw_rollback_hal_target_stub.o
 else
 $(error MCUFW_ROLLBACK_BACKEND muss stub oder flash sein (aktuell: $(MCUFW_ROLLBACK_BACKEND)))
 endif
@@ -108,7 +108,8 @@ FR_OBJS := $(BUILD)/freertos/list.o $(BUILD)/freertos/queue.o \
 
 # --- lwIP objects --------------------------------------------------------
 LW_DIR := $(SDK_DIR)/sdk/external/lwip
-LW_OBJS := $(BUILD)/lwip/def.o $(BUILD)/lwip/dhcp.o $(BUILD)/lwip/pbuf.o \
+LW_OBJS := $(BUILD)/lwip/sockets.o $(BUILD)/lwip/api_lib.o $(BUILD)/lwip/api_msg.o $(BUILD)/lwip/err.o $(BUILD)/lwip/netbuf.o $(BUILD)/lwip/netdb.o \
+           $(BUILD)/lwip/def.o $(BUILD)/lwip/dhcp.o $(BUILD)/lwip/pbuf.o \
            $(BUILD)/lwip/tcp_out.o $(BUILD)/lwip/raw.o $(BUILD)/lwip/lwip_timers.o \
            $(BUILD)/lwip/dns.o $(BUILD)/lwip/stats.o $(BUILD)/lwip/tcp_in.o \
            $(BUILD)/lwip/ip4_addr.o \
@@ -122,10 +123,22 @@ LW_OBJS := $(BUILD)/lwip/def.o $(BUILD)/lwip/dhcp.o $(BUILD)/lwip/pbuf.o \
 $(BUILD)/lwip/netifapi.o: $(LW_DIR)/src/api/netifapi.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 
-$(BUILD)/lwip/sys_arch.o: $(LW_DIR)/contrib/port/FreeRTOS/wmsdk/sys_arch.c | $(BUILD)/lwip
+$(BUILD)/lwip/sockets.o: $(LW_DIR)/src/api/sockets.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 
-$(BUILD)/lwip/igmp.o: $(LW_DIR)/src/core/ipv4/igmp.c | $(BUILD)/lwip
+$(BUILD)/lwip/api_lib.o: $(LW_DIR)/src/api/api_lib.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/api_msg.o: $(LW_DIR)/src/api/api_msg.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/err.o: $(LW_DIR)/src/api/err.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/netbuf.o: $(LW_DIR)/src/api/netbuf.c | $(BUILD)/lwip
+	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
+$(BUILD)/lwip/netdb.o: $(LW_DIR)/src/api/netdb.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
 
 $(BUILD)/lwip/etharp.o: $(LW_DIR)/src/netif/etharp.c | $(BUILD)/lwip
@@ -139,11 +152,10 @@ $(BUILD)/lwip/memp.o: $(LW_DIR)/src/core/memp.c | $(BUILD)/lwip
 
 $(BUILD)/lwip/init.o: $(LW_DIR)/src/core/init.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
-	$(CC) $(SDK_CFLAGS) -c $< -o $@
 
 ALL_OBJS := $(MCUFW_OBJS) $(FR_OBJS) $(LW_OBJS) 
 
-.PHONY: all elf container check-vendor check-net check-owner check-owner-elf check-config inspect clean host-test
+.PHONY: all elf container check-vectors check-vendor check-net check-owner check-owner-elf check-config inspect clean host-test
 
 all: container
 
@@ -228,6 +240,7 @@ $(BUILD)/lwip/mem.o: $(LW_DIR)/src/core/mem.c | $(BUILD)/lwip
 
 $(BUILD)/lwip/sys_arch.o: $(LW_DIR)/contrib/port/FreeRTOS/wmsdk/sys_arch.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
+
 
 $(BUILD)/lwip/igmp.o: $(LW_DIR)/src/core/ipv4/igmp.c | $(BUILD)/lwip
 	$(CC) $(SDK_CFLAGS) -c $< -o $@
@@ -346,7 +359,22 @@ check-config: $(ELF)
 		echo "== config: Backend stub-no-persist (deklariert, kein Flash-Zugriff im Config-Pfad)"; \
 	fi
 
-container: $(ELF) check-vendor check-net check-owner check-owner-elf check-config
+# --- phase 4b.2: vector table verification ---------------------------------
+check-vectors: $(ELF)
+	@echo "== check-vectors: verifying ISR vector table layout"
+	@$(NM) $(ELF) | grep -q "T SVC_IRQHandler" || { echo "FEHLER: SVC_IRQHandler nicht als T-Symbol"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T PendSV_IRQHandler" || { echo "FEHLER: PendSV_IRQHandler nicht als T-Symbol"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T SysTick_IRQHandler" || { echo "FEHLER: SysTick_IRQHandler nicht als T-Symbol"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T SDIO_IRQHandler" || { echo "FEHLER: SDIO_IRQHandler nicht als T-Symbol"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T WIFIWKUP_IRQHandler" || { echo "FEHLER: WIFIWKUP_IRQHandler nicht als T-Symbol"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T DMA_IRQHandler" || { echo "FEHLER: DMA_IRQHandler nicht als T-Symbol"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T QSPI_IRQHandler" || { echo "FEHLER: QSPI_IRQHandler nicht als T-Symbol"; exit 1; }
+	@vec_info=$$($(NM) -S $(ELF) | awk '/ mcufw_vectors$$/{print $$1 ":" strtonum("0x"$$2)}'); \
+	  test "$$vec_info" = "00100000:316" || { echo "FEHLER: mcufw_vectors=$$vec_info != 00100000:316 (79*4)"; exit 1; }
+	@! $(NM) $(ELF) | grep -q "mcufw_rollback_hal_test_" || { echo "FEHLER: Host-Rollback-Stub im Target-Image gelinkt"; exit 1; }
+	@echo "== check-vectors: PASS (mcufw_vectors @ 0x00100000 = 316 B / 79 Slots, kein Host-Rollback-Stub)"
+
+container: $(ELF) check-vectors check-vendor check-net check-owner check-owner-elf check-config
 	@test -x $(AXF2FW) || { echo "FEHLER: $(AXF2FW) fehlt"; exit 1; }
 	@rm -f $(CONTAINER)
 	cd $(BUILD) && $(AXF2FW) mcufw.elf mcufw_MRVL.bin
@@ -363,6 +391,7 @@ HOST_SRCS := $(SRC)/mcufw_crypto.c $(SRC)/mcufw_miio.c $(SRC)/mcufw_selftest.c \
              $(SRC)/mcufw_runtime.c \
              $(SRC)/mcufw_config.c $(SRC)/mcufw_config_hal_host.c \
              $(SRC)/mcufw_rollback.c $(SRC)/mcufw_rollback_hal_host.c \
+             $(SRC)/mcufw_wlan.c \
              $(ROOT)/host_test.c
 
 host-test:

@@ -63,3 +63,17 @@ void mcufw_rollback_set_counter(uint32_t count)
 {
 	(void)mcufw_rollback_hal_write(count);
 }
+
+int mcufw_rollback_deferred_tick(uint32_t *ticks, int *confirmed,
+                                 int wlan_ready, uint32_t threshold_ticks)
+{
+	if (!ticks || !confirmed || *confirmed || !wlan_ready)
+		return 0;
+	(*ticks)++;
+	if (*ticks >= threshold_ticks) {
+		mcufw_rollback_confirm_good();
+		*confirmed = 1;
+		return 1;
+	}
+	return 0;
+}
