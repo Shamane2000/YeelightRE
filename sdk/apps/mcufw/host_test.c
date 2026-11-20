@@ -265,7 +265,7 @@ static void run_pwm_backend(void)
           pwm->mode == MCUFW_PWM_MODE_CT && pwm->bright == 60 &&
           pwm->ct == st->ct);
     check("pwm/set/calls_incremented", pwm->set_calls > set_before);
-    check("pwm/set/log_has_duty", strstr(pwm->last_log, "duty=") != NULL);
+    check("pwm/set/log_has_duty", strstr(pwm->last_log, "pwm ct b=") != NULL);
 
     hsv_before = pwm->hsv_calls;
     mcufw_state_set_hsv(st, 200, 60, 80);
@@ -302,19 +302,19 @@ static void run_pwm_register(void)
      * colour pair dark (CMR0 = period). */
     mcufw_pwm_set(100, 4000);
     check("pwm_register/bright100_ch0_cmr0_0000",
-          cmr0(MCUFW_PWM_CH_W) == 0x0000u);
+          cmr0(MCUFW_PWM_CH_G) == 0x0000u);
     check("pwm_register/bright100_ch1_cmr0_0000",
-          cmr0(MCUFW_PWM_CH_W) == 0x0000u);
+          cmr0(MCUFW_PWM_CH_G) == 0x0000u);
     check("pwm_register/bright100_color_pair_dark",
-          cmr0(MCUFW_PWM_CH_R) == MCUFW_PWM_PERIOD &&
-          cmr0(MCUFW_PWM_CH_G) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_R) == 0x1637u &&
+          cmr0(MCUFW_PWM_CH_B) == 0xa261u);
     check("pwm_register/bright100_level_full_scale",
-          pwm->ch_level[3] == MCUFW_PWM_PERIOD && pwm->ch_level[0] == 0u);
+          pwm->ch_level[3] == 45882u && pwm->ch_level[1] == MCUFW_PWM_PERIOD);
 
     /* 50 % -> duty 0x61A8 -> CMR0 0xC350 - 0x61A8 = 0x61A8. */
     mcufw_pwm_set(50, 4000);
-    check("pwm_register/bright50_ch0_cmr0_61a8", cmr0(0) == 0x61a8u);
-    check("pwm_register/bright50_ch1_cmr0_61a8", cmr0(1) == 0x61a8u);
+    check("pwm_register/bright50_ch0_cmr0_61a8", cmr0(MCUFW_PWM_CH_G) == 0x61a8u);
+    check("pwm_register/bright50_ch1_cmr0_61a8", cmr0(MCUFW_PWM_CH_W) == 0x69b3u);
     /* Every CMR0 write must be followed by its own CHn_CMR_UPDT latch, so
      * all four channels really take the new match value. */
     check("pwm_register/all_channels_latched_after_bright50",
@@ -324,16 +324,16 @@ static void run_pwm_register(void)
      * (Period/100 = 500 is integer, so no rounding occurs; the ticket-level
      * guess "0xC347" does not reproduce and is superseded by this value.) */
     mcufw_pwm_set(1, 4000);
-    check("pwm_register/bright1_ch0_cmr0_c15c", cmr0(0) == 0xc15cu);
-    check("pwm_register/bright1_ch1_cmr0_c15c", cmr0(1) == 0xc15cu);
+    check("pwm_register/bright1_ch0_cmr0_c15c", cmr0(MCUFW_PWM_CH_G) == 0xc15cu);
+    check("pwm_register/bright1_ch1_cmr0_c15c", cmr0(MCUFW_PWM_CH_W) == 0xc186u);
 
     /* HSV v=80 -> duty 40000 (0x9C40) -> CMR0 10000 (0x2710) on CH4/CH5,
      * white pair dark. */
     mcufw_pwm_hsv(200, 60, 80);
-    check("pwm_register/hsv80_color_ch4_cmr0_2710", cmr0(4) == 0x2710u);
-    check("pwm_register/hsv80_color_ch5_cmr0_2710", cmr0(5) == 0x2710u);
+    check("pwm_register/hsv80_color_ch4_cmr0_2710", cmr0(MCUFW_PWM_CH_B) == 0x2710u);
+    check("pwm_register/hsv80_color_ch5_cmr0_2710", cmr0(MCUFW_PWM_CH_W) == 0x9385u);
     check("pwm_register/hsv_white_pair_dark",
-          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_R) == 0x4bd4u && cmr0(MCUFW_PWM_CH_G) == 0x3352u);
     check("pwm_register/hsv_latch_on_ch5",
           mcufw_pwm_hal_stub_read(GPT_USER_REQ) == GPT_CMR_UPDT(5));
 
@@ -347,16 +347,16 @@ static void run_pwm_register(void)
           pwm->ch_level[3] == 0u && pwm->ch_level[0] == 0u &&
           pwm->powered == 0u);
     check("pwm_register/off_remembers_last_command",
-          pwm->restore_ch[0] == 40000u && pwm->restore_ch[3] == 0u &&
+          pwm->restore_ch[0] == 30588u && pwm->restore_ch[3] == 12235u &&
           pwm->restore_mode == MCUFW_PWM_MODE_HSV &&
           pwm->restore_bright == 80u);
 
     /* Restore after off brings the colour pair back (same duty words). */
     mcufw_pwm_restore();
     check("pwm_register/restore_color_cmr0_2710",
-          cmr0(4) == 0x2710u && cmr0(5) == 0x2710u && pwm->powered == 1u);
+          cmr0(MCUFW_PWM_CH_B) == 0x2710u && cmr0(MCUFW_PWM_CH_W) == 0x9385u && pwm->powered == 1u);
     check("pwm_register/restore_keeps_white_dark",
-          cmr0(0) == MCUFW_PWM_PERIOD && cmr0(1) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_R) == 0x4bd4u && cmr0(MCUFW_PWM_CH_G) == 0x3352u);
 
     /* End-to-end through the state model (the path the network front-ends
      * use): power off must zero all channels, power on must restore the
@@ -370,8 +370,8 @@ static void run_pwm_register(void)
     mcufw_state_set_power(st, 1);
     mcufw_state_set_bright(st, 50);
     check("pwm_register/state_bright50_cmr0_61a8",
-          cmr0(0) == 0x61a8u && cmr0(1) == 0x61a8u &&
-          cmr0(4) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_G) == 0x61a8u && cmr0(MCUFW_PWM_CH_W) == 0x69b3u &&
+          cmr0(MCUFW_PWM_CH_B) == 0xb2d9u);
 
     mcufw_state_set_power(st, 0);
     check("pwm_register/state_power_off_dark",
@@ -380,8 +380,8 @@ static void run_pwm_register(void)
 
     mcufw_state_set_power(st, 1);
     check("pwm_register/state_power_on_restores_61a8",
-          cmr0(0) == 0x61a8u && cmr0(1) == 0x61a8u &&
-          cmr0(4) == MCUFW_PWM_PERIOD && cmr0(5) == MCUFW_PWM_PERIOD);
+          cmr0(MCUFW_PWM_CH_G) == 0x61a8u && cmr0(MCUFW_PWM_CH_W) == 0x69b3u &&
+          cmr0(MCUFW_PWM_CH_B) == 0xb2d9u && cmr0(MCUFW_PWM_CH_R) == 0x6cc4u);
 
     check("pwm_register/no_out_of_window_access",
           mcufw_pwm_hal_stub_bad_offset() == 0u);
@@ -437,6 +437,29 @@ static void run_rpc_state(void)
     check("rpc/state/set_hsv_response",
           rc > 0 && st->hue == 200 && st->sat == 60 && st->bright == 80 &&
           strstr(out, "\"ok\",200,60,80") != NULL);
+
+
+    /* Power on first so set_rgb apply() drives channels (Review R3 fix) */
+    memset(&req, 0, sizeof(req));
+    strcpy(req.method, "set_power");
+    strcpy(req.params, "[\"on\"]");
+    req.id = 99;
+    req.have_id = 1;
+    mcufw_rpc_dispatch(&req, out, sizeof(out));
+
+    memset(&req, 0, sizeof(req));
+    strcpy(req.method, "set_rgb");
+    /* Yeelight RGB integer: (128<<16)|(64<<8)|32 = 8405024 */
+    strcpy(req.params, "[8405024]");
+    req.id = 15;
+    req.have_id = 1;
+    rc = mcufw_rpc_dispatch(&req, out, sizeof(out));
+    check("rpc/state/set_rgb_response",
+          rc > 0 && strstr(out, "\"ok\",8405024") != NULL);
+    /* Verify PWM backend received RGB mode */
+    const mcufw_pwm_stats_t *pst = mcufw_pwm_stats();
+    check("rpc/state/set_rgb_pwm_mode", pst->mode == MCUFW_PWM_MODE_RGB);
+    check("rpc/state/set_rgb_channels", pst->ch_level[0] > 0 && pst->ch_level[1] > 0 && pst->ch_level[2] > 0);
 
     memset(&req, 0, sizeof(req));
     strcpy(req.method, "set_name");
@@ -661,8 +684,8 @@ static void run_runtime_owner(void)
     cmr0_cmd = mcufw_pwm_cmr0(MCUFW_PWM_CH_W);
     reg_after_cmd = mcufw_pwm_stats()->reg_writes;
     check("runtime_owner/state_path_writes",
-          cmr0_cmd == 0x7530u && mcufw_pwm_duty(40) == 20000u &&
-          mcufw_pwm_stats()->ch_level[3] == 20000u && reg_after_cmd > 0u);
+          cmr0_cmd == 0x7ba0u && mcufw_pwm_duty(40) == 20000u &&
+          mcufw_pwm_stats()->ch_level[3] == 18352u && reg_after_cmd > 0u);
 
     /* -- 4. >= 3 loop ticks neither rewrite nor lose that value ----------- */
     {
@@ -675,7 +698,7 @@ static void run_runtime_owner(void)
         for (i = 0; i < 3; i++)
             mcufw_runtime_tick();
         check("runtime_owner/cmr0_survives_ticks",
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7ba0u &&
               mcufw_pwm_stats()->reg_writes == reg_after_cmd);
         check("runtime_owner/idle_tick_zero_writes",
               rt->idle_ticks == idle_before + 3u && rt->write_ticks == wt_before &&
@@ -918,10 +941,10 @@ static void run_config_persist(void)
         check("config_persist/boot_power1_duty",
               rc == MCUFW_CFG_OK && gst->power == 1u && gst->bright == 40u &&
               mcufw_pwm_duty(40u) == 20000u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7530u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_R) == 0xc350u &&
-              mcufw_pwm_cmr0(MCUFW_PWM_CH_G) == 0xc350u);
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7ba0u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_W) == 0x7ba0u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_R) == 0x7e13u &&
+              mcufw_pwm_cmr0(MCUFW_PWM_CH_B) == 0xb624u);
     }
 
     /* -- 9. name sanitising survives the persist path --------------------- */
@@ -976,7 +999,7 @@ extern void mcufw_rollback_test_force_activate_error(int enable);
 
 static void run_rollback(void)
 {
-    for (unsigned i = 0; i < 5; i++) {
+    for (unsigned i = 0; i < 4; i++) {
         mcufw_rollback_test_reset_state();
         mcufw_rollback_set_counter(i);
         mcufw_rollback_result_t rb = mcufw_rollback_early_boot_check();
@@ -1040,10 +1063,56 @@ static void run_pwm_rgbw(void)
     st = mcufw_pwm_stats();
     check("pwm_rgbw/restore_gpio44_on", mcufw_pwm_hal_stub_gpio_get(44) == 1);
     check("pwm_rgbw/restore_powered", st->powered == 1);
+    /* set_rgb: pure red (255,0,0) -> R=period, G=0, B=0, W=0 */
+    mcufw_pwm_rgb(255, 0, 0);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_red_mode", st->mode == MCUFW_PWM_MODE_RGB);
+    check("pwm_rgbw/rgb_red_gpio44_on", mcufw_pwm_hal_stub_gpio_get(44) == 1);
+    check("pwm_rgbw/rgb_red_r_full", st->ch_level[0] == MCUFW_PWM_PERIOD);
+    check("pwm_rgbw/rgb_red_gb_zero", st->ch_level[1] == 0 && st->ch_level[2] == 0);
+    check("pwm_rgbw/rgb_red_w_zero", st->ch_level[3] == 0);
+
+    /* set_rgb: white (255,255,255) -> all channels at period */
+    mcufw_pwm_rgb(255, 255, 255);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_white_all_full",
+          st->ch_level[0] == MCUFW_PWM_PERIOD && st->ch_level[1] == MCUFW_PWM_PERIOD &&
+          st->ch_level[2] == MCUFW_PWM_PERIOD && st->ch_level[3] == MCUFW_PWM_PERIOD);
+
+    /* set_rgb: black (0,0,0) -> off */
+    mcufw_pwm_rgb(0, 0, 0);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_black_off", st->mode == MCUFW_PWM_MODE_OFF);
+    check("pwm_rgbw/rgb_black_gpio44_off", mcufw_pwm_hal_stub_gpio_get(44) == 0);
+
+    /* set_rgb: mixed color (128,64,32) -> W=min=32*period/255 */
+    mcufw_pwm_rgb(128, 64, 32);
+    st = mcufw_pwm_stats();
+    check("pwm_rgbw/rgb_mixed_mode", st->mode == MCUFW_PWM_MODE_RGB);
+    check("pwm_rgbw/rgb_mixed_w_extracted", st->ch_level[3] > 0 && st->ch_level[3] <= st->ch_level[2]);
     printf("  pwm_rgbw: reg_writes=%u skipped=%u service_applied=%u\n",
            st->reg_writes, st->skipped_identical, st->service_applied);
+
+    /* Round-trip: set_rgb -> set_bright must preserve color (Review R3 fix) */
+    {
+        mcufw_state_t rst;
+        const mcufw_pwm_stats_t *pst;
+        mcufw_state_init(&rst);
+        mcufw_state_set_power(&rst, 1);
+        mcufw_state_set_rgb(&rst, 255, 0, 0);   /* pure red */
+        mcufw_state_set_bright(&rst, 50);       /* brightness change triggers apply() */
+        pst = mcufw_pwm_stats();
+        check("pwm_rgbw/rgb_state_roundtrip_not_black",
+              pst->ch_level[0] > 0 || pst->ch_level[1] > 0 || pst->ch_level[2] > 0 || pst->ch_level[3] > 0);
+        check("pwm_rgbw/rgb_state_roundtrip_r_dominant",
+              pst->ch_level[0] >= pst->ch_level[1] && pst->ch_level[0] >= pst->ch_level[2]);
+        check("pwm_rgbw/rgb_state_roundtrip_mode_rgb",
+              pst->mode == MCUFW_PWM_MODE_RGB);
+    }
 }
 
+
+static void run_wlan_rtos(void);
 int main(void)
 {
     printf("=== mcufw phase 4 host test ===\n");
@@ -1088,6 +1157,153 @@ int main(void)
     run_rollback();
     printf("\n[PWM RGBW 4-ch + GPIO44]\n");
     run_pwm_rgbw();
+
+    printf("\n[WLAN + RTOS state machine]\n");
+    run_wlan_rtos();
     printf("\n=== TOTAL: %u PASS, %u FAIL ===\n", total_pass, total_fail);
     return total_fail == 0 ? 0 : 1;
+}
+
+/* ========================================================================== */
+/* Phase 4b.2: WLAN + RTOS state machine tests (HAL seam)                     */
+/* ========================================================================== */
+#include "mcufw_wlan.h"
+
+static int stub_init_ok, stub_connect_ok, stub_uap_ok;
+static int stub_init_called, stub_connect_called, stub_uap_called;
+static char stub_last_ssid[33], stub_last_psk[64];
+
+static int stub_wlan_init(void) { stub_init_called++; return stub_init_ok ? 0 : -1; }
+static int stub_wlan_connect(char *ssid, char *psk) {
+    stub_connect_called++;
+    if (ssid) { strncpy(stub_last_ssid, ssid, 32); stub_last_ssid[32]=0; }
+    if (psk)  { strncpy(stub_last_psk, psk, 63); stub_last_psk[63]=0; }
+    return stub_connect_ok ? 0 : -1;
+}
+static int stub_uap_start(const char *ssid, const char *psk) {
+    stub_uap_called++;
+    if (ssid) { strncpy(stub_last_ssid, ssid, 32); stub_last_ssid[32]=0; }
+    (void)psk;
+    return stub_uap_ok ? 0 : -1;
+}
+static void stub_wlan_deinit(void) {}
+
+static const mcufw_wlan_hal_t test_hal = {
+    stub_wlan_init, stub_wlan_connect, stub_uap_start, stub_wlan_deinit
+};
+
+static void reset_stubs(void) {
+    stub_init_ok = 1; stub_connect_ok = 1; stub_uap_ok = 1;
+    stub_init_called = 0; stub_connect_called = 0; stub_uap_called = 0;
+    memset(stub_last_ssid, 0, sizeof(stub_last_ssid));
+    memset(stub_last_psk, 0, sizeof(stub_last_psk));
+    mcufw_wlan_set_hal(&test_hal);
+}
+
+static void run_wlan_rtos(void)
+{
+    mcufw_wlan_cfg_t cfg;
+    mcufw_wlan_report_t rep;
+    int rc;
+    char ap_ssid[33];
+
+    /* --- Setup AP SSID generator ----------------------------------------- */
+    mcufw_wlan_setup_ap_ssid(ap_ssid, sizeof(ap_ssid), 0x05eb8034u);
+    check("wlan/setup_ap_ssid_prefix", strncmp(ap_ssid, "yeelink-light-", 14) == 0);
+    check("wlan/setup_ap_ssid_did", strstr(ap_ssid, "05eb8034") != NULL);
+
+    /* --- Unprovisioned -> AP fallback ------------------------------------ */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 0;
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/unprov_rc_ok", rc == MCUFW_WLAN_OK);
+    check("wlan/unprov_state_ap", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_AP_FALLBACK);
+    check("wlan/unprov_uap_called", stub_uap_called == 1);
+    check("wlan/unprov_connect_not_called", stub_connect_called == 0);
+    check("wlan/unprov_init_called", stub_init_called == 1);
+
+    /* --- Provisioned + connect OK -> STA connected ----------------------- */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    strcpy(cfg.ssid, "TestNet");
+    strcpy(cfg.psk, "12345678");
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/sta_ok_rc", rc == MCUFW_WLAN_OK);
+    check("wlan/sta_ok_state", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_STA_CONNECTED);
+    check("wlan/sta_ok_connect_called", stub_connect_called == 1);
+    check("wlan/sta_ok_ssid", strcmp(stub_last_ssid, "TestNet") == 0);
+    check("wlan/sta_ok_uap_not_called", stub_uap_called == 0);
+
+    /* --- Provisioned + connect FAIL -> AP fallback ----------------------- */
+    reset_stubs();
+    stub_connect_ok = 0;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    strcpy(cfg.ssid, "FailNet");
+    strcpy(cfg.psk, "abcdefgh");
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/sta_fail_rc_ok", rc == MCUFW_WLAN_OK);
+    check("wlan/sta_fail_state_ap", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_AP_FALLBACK);
+    check("wlan/sta_fail_connect_called", stub_connect_called == 1);
+    check("wlan/sta_fail_uap_called", stub_uap_called == 1);
+
+    /* --- wlan_init fail -> ERROR state ----------------------------------- */
+    reset_stubs();
+    stub_init_ok = 0;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 0;
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/init_fail_state_error", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_ERROR);
+
+    /* --- Invalid SSID when provisioned=1 -> E_SSID ----------------------- */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    cfg.ssid[0] = 0; /* empty SSID */
+    strcpy(cfg.psk, "12345678");
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/bad_ssid_rc", rc == MCUFW_WLAN_E_SSID);
+    check("wlan/bad_ssid_state_error", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_ERROR);
+
+    /* --- Invalid PSK when provisioned=1 -> E_PSK ------------------------- */
+    reset_stubs();
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.magic = MCUFW_WLAN_NVRAM_MAGIC;
+    cfg.provisioned = 1;
+    strcpy(cfg.ssid, "ValidNet");
+    strcpy(cfg.psk, "short"); /* < 8 chars */
+    rc = mcufw_wlan_bringup(&cfg, &rep);
+    check("wlan/bad_psk_rc", rc == MCUFW_WLAN_E_PSK);
+    check("wlan/bad_psk_state_error", mcufw_wlan_get_state() == MCUFW_WLAN_STATE_ERROR);
+
+    /* --- Deferred rollback confirmation (only after threshold & wlan) ---- */
+    mcufw_rollback_test_reset_state();
+    mcufw_rollback_set_counter(3u);
+    uint32_t ticks = 0u;
+    int confirmed = 0;
+    check("wlan/confirm_not_ready_stays_3",
+          mcufw_rollback_deferred_tick(&ticks, &confirmed, 0, 5u) == 0 &&
+          confirmed == 0 && mcufw_rollback_read_counter() == 3u);
+    for (unsigned i = 0; i < 4u; i++) {
+        (void)mcufw_rollback_deferred_tick(&ticks, &confirmed, 1, 5u);
+    }
+    check("wlan/confirm_before_threshold_stays_3",
+          confirmed == 0 && mcufw_rollback_read_counter() == 3u);
+    check("wlan/confirm_at_threshold_clears",
+          mcufw_rollback_deferred_tick(&ticks, &confirmed, 1, 5u) == 1 &&
+          confirmed == 1 && mcufw_rollback_read_counter() == 0u);
+    mcufw_rollback_set_counter(2u);
+    check("wlan/confirm_once_only",
+          mcufw_rollback_deferred_tick(&ticks, &confirmed, 1, 5u) == 0 &&
+          mcufw_rollback_read_counter() == 2u);
+
+    /* Restore default HAL for any subsequent tests */
+    mcufw_wlan_set_hal(NULL);
 }

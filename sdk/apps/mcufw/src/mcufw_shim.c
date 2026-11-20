@@ -68,11 +68,6 @@ int *__errno(void) {
     return &shim_errno;
 }
 
+/* Phase 4b.2: lwip_socket_init, stats_sock_display, lwip_getpeername now come
+ * from real lwIP sockets.c; only stats_display remains here (LWIP_STATS=0). */
 void stats_display(void) { /* stub */ }
-void stats_sock_display(void) { /* stub */ }
-
-/* Phase 3.5a: Socket-API stubs for libwmsdk_mcufw.a.
- * We use raw lwIP API only; the BSD socket layer is not linked.
- * These are never called at runtime in this phase. */
-void lwip_socket_init(void) { /* stub */ }
-int lwip_getpeername(int s, void *name, void *namelen) { (void)s; (void)name; (void)namelen; return -1; }

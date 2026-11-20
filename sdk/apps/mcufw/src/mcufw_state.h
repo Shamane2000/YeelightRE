@@ -31,6 +31,7 @@
 /* Yeelight `color_mode`: 2 = colour temperature, 3 = HSV. */
 #define MCUFW_COLOR_MODE_CT   2u
 #define MCUFW_COLOR_MODE_HSV  3u
+#define MCUFW_COLOR_MODE_RGB  1u
 
 typedef struct {
 	uint8_t  power;      /* 0 = off, 1 = on                             */
@@ -38,7 +39,10 @@ typedef struct {
 	uint16_t ct;         /* 1700..6500 Kelvin                           */
 	uint16_t hue;        /* 0..359                                      */
 	uint8_t  sat;        /* 0..100                                      */
-	uint8_t  color_mode; /* 2 = ct, 3 = hsv                             */
+	uint8_t  color_mode; /* 1 = rgb, 2 = ct, 3 = hsv                    */
+	uint8_t  rgb_r;      /* 0..255 (persisted for set_rgb round-trip)     */
+	uint8_t  rgb_g;      /* 0..255                                          */
+	uint8_t  rgb_b;      /* 0..255                                          */
 	uint8_t  cf_active;  /* colour flow running                         */
 	uint8_t  is_default; /* "set_default" marker                        */
 	char     name[MCUFW_NAME_MAX + 1u];
@@ -64,6 +68,7 @@ int mcufw_state_toggle(mcufw_state_t *st);
 int mcufw_state_set_bright(mcufw_state_t *st, long bright);
 int mcufw_state_set_ct(mcufw_state_t *st, long ct);
 int mcufw_state_set_hsv(mcufw_state_t *st, long hue, long sat, long val);
+int mcufw_state_set_rgb(mcufw_state_t *st, long r, long g, long b);
 int mcufw_state_set_name(mcufw_state_t *st, const char *name);
 int mcufw_state_set_cf(mcufw_state_t *st, int active);
 int mcufw_state_set_default(mcufw_state_t *st, int is_default);

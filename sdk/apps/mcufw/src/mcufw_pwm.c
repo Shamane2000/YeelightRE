@@ -123,6 +123,20 @@ static void hsv_to_rgbw(uint16_t hue, uint8_t sat, uint8_t val,
 	*r=rl; *g=gl; *b=bl; *w=wl;
 }
 
+/* RGB to RGBW: extract white component as min(R,G,B). */
+static void rgb_to_rgbw(uint8_t r, uint8_t g, uint8_t b,
+                        uint16_t *ro, uint16_t *go, uint16_t *bo, uint16_t *wo)
+{
+	uint32_t rl = ((uint32_t)r * MCUFW_PWM_PERIOD) / 255u;
+	uint32_t gl = ((uint32_t)g * MCUFW_PWM_PERIOD) / 255u;
+	uint32_t bl = ((uint32_t)b * MCUFW_PWM_PERIOD) / 255u;
+	uint32_t mn = rl < gl ? (rl < bl ? rl : bl) : (gl < bl ? gl : bl);
+	*ro = (uint16_t)rl;
+	*go = (uint16_t)gl;
+	*bo = (uint16_t)bl;
+	*wo = (uint16_t)mn;
+}
+
 /* CT mixing: simple linear interpolation between warm (2700K) and cool (6500K).
  * ct range: 2700..6500. Brightness 0..100. */
 static void ct_to_rgbw(uint8_t bright, uint16_t ct, uint16_t *r, uint16_t *g, uint16_t *b, uint16_t *w)
@@ -249,6 +263,50 @@ void mcufw_pwm_hsv(uint16_t hue, uint8_t sat, uint8_t val)
 	for(int i=0;i<4;i++) g_pwm.restore_ch[i]=g_pwm.ch_level[i];
 	log_put(g_pwm.last_log,sizeof(g_pwm.last_log),&pos,"pwm hsv h=");
 	log_num(g_pwm.last_log,sizeof(g_pwm.last_log),&pos,(long)hue);
+}
+
+void mcufw_pwm_rgb(uint8_t r, uint8_t g, uint8_t b)
+{
+	size_t pos=0;
+	uint16_t ro,go,bo,wo;
+
+	log_reset();
+	if (r==0 && g==0 && b==0) {
+		if (g_prog.mode==MCUFW_PWM_MODE_OFF) {
+			g_pwm.mode=MCUFW_PWM_MODE_OFF; g_pwm.bright=0; g_pwm.powered=0;
+			g_pwm.skipped_identical++;
+			log_put(g_pwm.last_log,sizeof(g_pwm.last_log),&pos,"pwm rgb black same");
+			return;
+		}
+		g_pwm.mode=MCUFW_PWM_MODE_OFF; g_pwm.bright=0; g_pwm.powered=0;
+		drive_channels(0,0,0,0);
+		g_prog.mode=MCUFW_PWM_MODE_OFF; g_prog.bright=0; g_prog.ct=0;
+		for(int i=0;i<4;i++) g_prog.ch[i]=0;
+		g_pwm.dirty=1;
+		log_put(g_pwm.last_log,sizeof(g_pwm.last_log),&pos,"pwm rgb black");
+		return;
+	}
+
+	rgb_to_rgbw(r, g, b, &ro, &go, &bo, &wo);
+
+	if (g_prog.mode==MCUFW_PWM_MODE_RGB &&
+	    g_prog.ch[0]==ro && g_prog.ch[1]==go && g_prog.ch[2]==bo && g_prog.ch[3]==wo) {
+		g_pwm.mode=MCUFW_PWM_MODE_RGB; g_pwm.powered=1;
+		g_pwm.skipped_identical++;
+		log_put(g_pwm.last_log,sizeof(g_pwm.last_log),&pos,"pwm rgb same");
+		return;
+	}
+
+	g_pwm.mode=MCUFW_PWM_MODE_RGB; g_pwm.powered=1;
+	uint32_t mx = ro > go ? (ro > bo ? ro : bo) : (go > bo ? go : bo);
+	g_pwm.bright = (uint8_t)((mx * 100u + MCUFW_PWM_PERIOD/2) / MCUFW_PWM_PERIOD);
+	drive_channels(ro, go, bo, wo);
+	g_prog.mode=MCUFW_PWM_MODE_RGB; g_prog.bright=g_pwm.bright; g_prog.ct=0;
+	g_prog.ch[0]=ro; g_prog.ch[1]=go; g_prog.ch[2]=bo; g_prog.ch[3]=wo;
+	g_pwm.dirty=1;
+	g_pwm.restore_mode=MCUFW_PWM_MODE_RGB; g_pwm.restore_bright=g_pwm.bright;
+	for(int i=0;i<4;i++) g_pwm.restore_ch[i]=g_pwm.ch_level[i];
+	log_put(g_pwm.last_log,sizeof(g_pwm.last_log),&pos,"pwm rgb");
 }
 
 void mcufw_pwm_restore(void)

@@ -28,7 +28,13 @@
 #include "mcufw_config_hal.h"
 #include "mcufw_rollback.h"
 
-#define MCUFW_VERSION "mcufw 0.6-phase3.6"
+#ifndef HOST_TEST
+#include "FreeRTOS.h"
+#include "task.h"
+extern void mcufw_rtos_start(void);
+#endif
+
+#define MCUFW_VERSION "mcufw 0.7-phase4b.2"
 
 extern void GPIO_PinMuxFun(int gpio_no, int pin_mux_fun);
 extern void GPIO_PinModeConfig(int gpio_no, int pin_mode);
@@ -184,37 +190,6 @@ static void net_selftest(void)
 	uart_putc('/');
 	uart_put_dec(n);
 	uart_puts(fail == 0u ? " PASS\r\n" : " FAIL\r\n");
-}
-
-static void net_wlan(void)
-{
-	const mcufw_wlan_cfg_t *cfg = mcufw_wlan_cfg();
-	mcufw_wlan_anchor_t anchors[8];
-	mcufw_wlan_report_t rep;
-	unsigned count = mcufw_wlan_link_proof(anchors, 8);
-	int rc = mcufw_wlan_bringup(cfg, &rep);
-
-	uart_puts("wlan cfg provisioned ");
-	uart_put_dec(cfg->provisioned);
-	uart_puts(" muid ");
-	uart_put_hex32(cfg->muid);
-	uart_puts("\r\n");
-
-	for (unsigned i = 0; i < count && i < 8u; i++) {
-		uart_puts("wlan sym ");
-		uart_puts(anchors[i].name);
-		uart_puts(" @");
-		uart_put_hex32((uint32_t)(uintptr_t)anchors[i].addr);
-		uart_puts(" ");
-		uart_puts(anchors[i].member);
-		uart_puts("\r\n");
-	}
-
-	uart_puts("wlan bringup stage ");
-	uart_puts(mcufw_wlan_stage_name(rep.stage));
-	uart_puts(" rc ");
-	uart_puts(mcufw_wlan_strerror(rc));
-	uart_puts(" (assoc = phase 5)\r\n");
 }
 
 static void net_miio(void)
@@ -452,9 +427,15 @@ static void rt_status(const char *line)
 }
 
 /* Bind UDP 54321 / TCP 55443, then run the service loop for ever.
- * No busy_delay, no socket to any peer, no AP join (phase 5). */
+ * Phase 4b.2: wrapped as FreeRTOS task; no busy_delay, no socket to any peer. */
+#ifndef HOST_TEST
+static void runtime_task(void *pvParameters)
+{
+	(void)pvParameters;
+#else
 static void runtime_loop(void)
 {
+#endif
 	static const mcufw_runtime_io_t io = {
 		rt_board_out,
 		rt_button,
@@ -479,8 +460,41 @@ static void runtime_loop(void)
 	mcufw_runtime_init(&io);
 	uart_puts("runtime-owner single-writer armed\r\n");
 
-	for (;;)
-		mcufw_runtime_tick();
+	/* Phase 4b.2: WLAN bringup MUST run after RTOS start (uses FreeRTOS primitives).
+	 * Moved here from boot diagnosis per PO-Faktencheck mandate #3. */
+	{
+		const mcufw_wlan_cfg_t *wcfg = mcufw_wlan_cfg();
+		mcufw_wlan_report_t wrep;
+		int wrc = mcufw_wlan_bringup(wcfg, &wrep);
+		uart_puts("wlan bringup stage ");
+		uart_puts(mcufw_wlan_stage_name(wrep.stage));
+		uart_puts(" rc ");
+		uart_puts(mcufw_wlan_strerror(wrc));
+		uart_puts(" state ");
+		uart_puts(mcufw_wlan_state_name(mcufw_wlan_get_state()));
+		uart_puts("\r\n");
+	}
+
+	{
+		uint32_t stable_ticks = 0u;
+		int boot_confirmed = 0;
+
+		for (;;) {
+			mcufw_wlan_state_t ws = mcufw_wlan_get_state();
+			int wlan_ready = (ws == MCUFW_WLAN_STATE_STA_CONNECTED ||
+			                  ws == MCUFW_WLAN_STATE_AP_FALLBACK);
+
+			mcufw_runtime_tick();
+			if (mcufw_rollback_deferred_tick(&stable_ticks, &boot_confirmed,
+			                                 wlan_ready,
+			                                 MCUFW_ROLLBACK_CONFIRM_TICKS)) {
+				uart_puts("rollback: boot confirmed good\r\n");
+			}
+#ifndef HOST_TEST
+			vTaskDelay(pdMS_TO_TICKS(10));
+#endif
+		}
+	}
 }
 
 int main(void)
@@ -525,7 +539,7 @@ int main(void)
 	lamp_banner();
 
 	net_selftest();
-	net_wlan();
+	/* net_wlan() moved to runtime_task (needs RTOS running) */
 	net_miio();
 	net_rpc_whitelist_proof();
 	net_mqtt_proof();
@@ -584,5 +598,12 @@ int main(void)
 
 	/* Ab hier ist der State-Pfad der einzige Schreiber; ein Tick speichert
 	 * nur bei einer NEUEN Mutation, ein Idle-Tick schreibt 0 Config-Bytes. */
+#ifndef HOST_TEST
+	/* Create the runtime task and start the FreeRTOS scheduler (never returns). */
+	xTaskCreate(runtime_task, "runtime", 2048, NULL, 2, NULL);
+	mcufw_rtos_start();
+#else
+	/* Host-test: run the loop directly (no scheduler). */
 	runtime_loop();
+#endif
 }

@@ -10,7 +10,7 @@
  *   CH0 = Rot, CH1 = Grün, CH4 = Blau, CH5 = Weiß
  *
  * CT-Mixing: warmweiß/kaltweiß wird über RGB+Anteil W gemischt.
- * set_rgb(h,s,v) steuert alle 4 Kanäle getrennt.
+ * mcufw_pwm_rgb(r,g,b) steuert alle 4 Kanäle getrennt (Yeelight RGB-Integer).
  */
 #ifndef MCUFW_PWM_H
 #define MCUFW_PWM_H
@@ -23,6 +23,7 @@
 #define MCUFW_PWM_MODE_OFF 0u
 #define MCUFW_PWM_MODE_CT  2u
 #define MCUFW_PWM_MODE_HSV 3u
+#define MCUFW_PWM_MODE_RGB 1u
 
 /* GPT0 channel indices for color2 RGBW strings. */
 #define MCUFW_PWM_CH_R 0u  /* GPIO0 */
@@ -59,6 +60,7 @@ typedef struct {
 void mcufw_pwm_init(void);
 void mcufw_pwm_set(uint8_t bright, uint16_t ct);
 void mcufw_pwm_hsv(uint16_t hue, uint8_t sat, uint8_t val);
+void mcufw_pwm_rgb(uint8_t r, uint8_t g, uint8_t b);
 void mcufw_pwm_restore(void);
 int  mcufw_pwm_service(void);
 void mcufw_pwm_invalidate(void);

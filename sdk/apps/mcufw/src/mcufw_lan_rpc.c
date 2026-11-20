@@ -431,6 +431,15 @@ int mcufw_rpc_dispatch(const mcufw_rpc_request_t *req,
         rb_sep(&rb); rb_num(&rb, (long)st->hue);
         rb_sep(&rb); rb_num(&rb, (long)st->sat);
         rb_sep(&rb); rb_num(&rb, (long)st->bright);
+    } else if (str_eq(req->method, "set_rgb")) {
+        /* Yeelight RGB integer encoding: (r<<16)|(g<<8)|b */
+        if (p_elem(req->params, 0, NULL, 0, &n1) != 2)
+            goto bad_param;
+        uint8_t rr = (uint8_t)((n1 >> 16) & 0xFF);
+        uint8_t gg = (uint8_t)((n1 >> 8) & 0xFF);
+        uint8_t bb = (uint8_t)(n1 & 0xFF);
+        mcufw_state_set_rgb(st, (long)rr, (long)gg, (long)bb);
+        rb_ok(&rb); rb_sep(&rb); rb_num(&rb, n1);
     } else if (str_eq(req->method, "set_name")) {
         if (p_elem(req->params, 0, s1, sizeof(s1), NULL) != 1)
             goto bad_param;

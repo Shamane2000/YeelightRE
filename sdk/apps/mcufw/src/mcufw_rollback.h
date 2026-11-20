@@ -43,4 +43,11 @@ uint32_t mcufw_rollback_read_counter(void);
 /* Nur für Host-Tests: setzt Counter explizit (Power-Loss-Simulation). */
 void mcufw_rollback_set_counter(uint32_t count);
 
+#define MCUFW_ROLLBACK_CONFIRM_TICKS 1500u /* ~15s bei 10ms/Tick */
+
+/* Verzoegerte Boot-Bestaetigung im Runtime-Loop (ruft confirm_good() einmalig
+ * auf, sobald wlan_ready && *ticks >= threshold_ticks). */
+int mcufw_rollback_deferred_tick(uint32_t *ticks, int *confirmed,
+                                 int wlan_ready, uint32_t threshold_ticks);
+
 #endif /* MCUFW_ROLLBACK_H */
