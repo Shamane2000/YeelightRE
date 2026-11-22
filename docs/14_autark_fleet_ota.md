@@ -53,15 +53,19 @@ python3 tools/autark_flash.py provision-mcufw --url http://192.168.10.1:8080 \
 
 ---
 
-## 4. OPNsense / AdGuard Firewall-Käfig (für Klasse-2-Birnen wie `2.0.6_0065`)
+## 4. Zero-Jarvis-Architektur & OPNsense/AdGuard Firewall-Käfig (für `2.0.6_0065`)
 
-Damit eine `2.0.6_xxxx`-Birne (`.115`) während des einmaligen 30-Sekunden-Cloud-RPC-Impulses **garantiert keine** Xiaomi-Stock-Firmware oder fremde Cloud-Kommandos nachladen kann:
+Gemäß Homelab-Regelwerk (`hermes-homelab` §3) bleibt **Jarvis (`192.168.1.196`) komplett unberührt** (kein OTA-Server, keine Caddy-Änderung, keine Wegwerf-Skripte oder Xiaomi-Credentials):
 
-1. **AdGuard Home / OPNsense DNS-Block** für alle Stock-Firmware- & Vendor-CDNs:
-   - `*.mi-img.com` (u. a. `cdn.awsde0.fds.api.mi-img.com`, `cdn.cnbj1.fds.api.mi-img.com`)
-   - `*.fds.api.mi-img.com`
-   - `*.yeelight.com`
-2. **Temporäre OPNsense-Regel** nur für die Ziel-IP (`192.168.1.115`) während des 30-Sekunden-Fensters:
-   - Erlaubt ausschließlich ausgehend UDP/TCP zu `de.ot.io.mi.com:8053` / `de.ott.io.mi.com:80` für den initialen RPC-Relay.
-   - LAN HTTP/1.1 `:80` URL (ohne `:port`, Caddy auf `jarvis:80` -> `192.168.1.196`) liefert zuerst `404` im Trockentest und erst danach einmalig `mcufw_MRVL.bin`.
-3. Sobald `mcufw` bootet, verbindet es sich nur noch lokal mit Mosquitto (`192.168.1.106:1883`) — die Firewall-Ausnahme wird wieder entfernt.
+| Rolle | Host | Aufgabe |
+| :--- | :--- | :--- |
+| **Lokaler Steuer-Laptop** | `Borg-Zorin` (`192.168.1.187`, `~/Projekte/Antigravity/yeelight-flash/`) | `jailed_cloud_ota.py login/pair-ap/rpc-ota` mit Wegwerf-Account (`bulbblub@ji5.de`) — Zugangsdaten verlassen nie den Laptop |
+| **HTTP/1.1 Port-80 OTA** | `Mordor` (`10.10.10.13:80`, ephemeres `docker run --rm`) | Serviert `404`-Dry-Run und anschließend einmalig `mcufw_MRVL.bin` über `http://10.10.10.13/...` (ohne `:port`) |
+| **Firewall-Käfig & Sniffer** | `OPNsense` (`192.168.1.1`, AdGuard Home + `tcpdump`) | Blockiert `*.mi-img.com`, `*.fds.api.mi-img.com`, `*.yeelight.com` hart; schneidet Vorher-/Nachher-Traffic von `.115` mit |
+
+Ablauf (`docs` + `tools/jailed_cloud_ota.py`):
+1. `python3 jailed_cloud_ota.py login --username bulbblub@ji5.de` (interaktiv am Laptop).
+2. Optional Setup-AP: `python3 jailed_cloud_ota.py pair-ap --wifi-ssid <WLAN> --wifi-psk <PSK>` (setzt `cfg_lan_ctrl=1` + `uid` + `bind_key` ohne Handy-App).
+3. OPNsense-CDN-Block + Mordor Port-80 `404`-Container aktivieren, `rpc-ota --did 05eb8034 --dry-run-url http://10.10.10.13/dryrun_404.bin` prüfen.
+4. Auf Mordor Live-Image umschalten → `rpc-ota --did 05eb8034 --live-url http://10.10.10.13/mcufw_MRVL.bin --md5 4f355acb69d0a73e09b8b26e696176be --confirm-write`.
+5. Sobald `mcufw` bootet: Vorher-/Nachher-Capture auf OPNsense zeigt `0` ausgehende Cloud-Pakete; Container & Käfig-Ausnahme werden entfernt.
