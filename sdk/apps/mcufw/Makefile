@@ -92,6 +92,7 @@ MCUFW_OBJS := $(BUILD)/mcufw/startup.o $(BUILD)/mcufw/main.o \
               $(BUILD)/mcufw/mcufw_selftest.o $(BUILD)/mcufw/mcufw_shim.o \
               $(BUILD)/mcufw/mcufw_rtos.o $(BUILD)/mcufw/mcufw_lwip.o \
               $(BUILD)/mcufw/mcufw_lan_rpc.o $(BUILD)/mcufw/mcufw_mqtt.o \
+              $(BUILD)/mcufw/mcufw_mqtt_net_lwip.o \
               $(BUILD)/mcufw/mcufw_cf.o $(BUILD)/mcufw/mcufw_lwip_chksum.o \
               $(BUILD)/mcufw/mcufw_state.o $(BUILD)/mcufw/mcufw_pwm.o \
               $(BUILD)/mcufw/mcufw_pwm_hal_target.o \
@@ -342,7 +343,10 @@ check-owner-elf: $(ELF)
 	@$(NM) $(ELF) | grep -q "T mcufw_config_save" || { echo "FEHLER: mcufw_config_save fehlt im Image"; exit 1; }
 	@$(NM) $(ELF) | grep -q "T mcufw_config_hal_write" || { echo "FEHLER: Config-Seam mcufw_config_hal_write fehlt"; exit 1; }
 	@! $(NM) $(ELF) | grep -q "mcufw_ota_hal_stub_" || { echo "FEHLER: Host-OTA-Stub im Target-Image gelinkt"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_mqtt_client_tick" || { echo "FEHLER: mcufw_mqtt_client_tick fehlt im Image"; exit 1; }
+	@$(NM) $(ELF) | grep -q "T mcufw_mqtt_lwip_io" || { echo "FEHLER: mcufw_mqtt_lwip_io fehlt im Image"; exit 1; }
 	@! $(NM) $(ELF) | grep -q "mcufw_config_hal_stub_" || { echo "FEHLER: Host-Config-Stub im Target-Image gelinkt"; exit 1; }
+	@! $(NM) $(ELF) | grep -q "mcufw_mqtt_host" || { echo "FEHLER: Host-MQTT-Stub im Target-Image gelinkt"; exit 1; }
 	@echo "== owner-elf: runtime-owner + beide Netz-Pumps + Config-Seam im Image, keine Host-Stubs"
 
 # --- phase 4: config backend guard ---------------------------------------

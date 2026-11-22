@@ -390,7 +390,7 @@ static int handle_encrypted(mcufw_miio_ctx_t *ctx, const uint8_t *in,
 			const mcufw_state_t *st = mcufw_state();
 
 			sb_put(&sb, ",\"result\":{\"model\":\"mcufw\","
-				   "\"fw_ver\":\"0.8-phase4b.3\",\"power\":\"");
+				   "\"fw_ver\":\"0.8-phase4b.4\",\"power\":\"");
 			sb_put(&sb, st->power ? "on" : "off");
 			sb_put(&sb, "\",\"bright\":");
 			sb_dec(&sb, (int32_t)st->bright);

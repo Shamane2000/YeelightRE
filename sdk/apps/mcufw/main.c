@@ -18,6 +18,7 @@
 #include "mcufw_selftest.h"
 #include "mcufw_lan_rpc.h"
 #include "mcufw_mqtt.h"
+#include "mcufw_mqtt_net_lwip.h"
 #include "mcufw_cf.h"
 #include "mcufw_pwm.h"
 #include "mcufw_state.h"
@@ -36,7 +37,7 @@
 extern void mcufw_rtos_start(void);
 #endif
 
-#define MCUFW_VERSION "mcufw 0.8-phase4b.3"
+#define MCUFW_VERSION "mcufw 0.8-phase4b.4"
 
 extern void GPIO_PinMuxFun(int gpio_no, int pin_mux_fun);
 extern void GPIO_PinModeConfig(int gpio_no, int pin_mode);
@@ -497,6 +498,10 @@ static void runtime_loop(void)
 	mcufw_net_bind_transport(mcufw_net_lwip_transport());
 #ifndef HOST_TEST
 	mcufw_net_bind_http(mcufw_net_lwip_http_rx, mcufw_net_lwip_http_tx);
+#endif
+	mcufw_mqtt_client_init(MCUFW_MIIO_DID);
+#ifndef HOST_TEST
+	mcufw_mqtt_client_bind(mcufw_mqtt_lwip_io());
 #endif
 
 	uart_puts("net bind udp ");

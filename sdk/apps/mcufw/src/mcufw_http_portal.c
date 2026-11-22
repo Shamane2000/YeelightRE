@@ -128,7 +128,7 @@ int mcufw_http_handle_request(const char *req, size_t req_len,
 		const mcufw_ota_state_t *ota = mcufw_ota_state();
 		const mcufw_state_t *st = mcufw_state();
 		size_t p = 0u;
-		s_put(body_buf, sizeof(body_buf), &p, "{\"fw\":\"0.8-phase4b.3\",\"wlan\":\"");
+		s_put(body_buf, sizeof(body_buf), &p, "{\"fw\":\"0.8-phase4b.4\",\"wlan\":\"");
 		s_put(body_buf, sizeof(body_buf), &p, mcufw_wlan_state_name(mcufw_wlan_get_state()));
 		s_put(body_buf, sizeof(body_buf), &p, "\",\"ota\":\"");
 		s_put(body_buf, sizeof(body_buf), &p, mcufw_ota_status_name(ota->status));

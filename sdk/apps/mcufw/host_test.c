@@ -1117,6 +1117,7 @@ static void run_pwm_rgbw(void)
 
 static void run_wlan_rtos(void);
 static void run_devcfg_ota_portal(void);
+static void run_mqtt_client_ha(void);
 int main(void)
 {
     printf("=== mcufw phase 4 host test ===\n");
@@ -1167,6 +1168,9 @@ int main(void)
 
     printf("\n[Device config + Self-OTA + HTTP portal]\n");
     run_devcfg_ota_portal();
+
+    printf("\n[MQTT 3.1.1 client + HA 2026.11 discovery]\n");
+    run_mqtt_client_ha();
     printf("\n=== TOTAL: %u PASS, %u FAIL ===\n", total_pass, total_fail);
     return total_fail == 0 ? 0 : 1;
 }
@@ -1503,4 +1507,458 @@ static void run_devcfg_ota_portal(void)
           strstr(rsp, "rollback_scheduled") != NULL &&
           mcufw_ota_state()->rollback_pending == 1);
     mcufw_ota_reset();
+}
+
+/* ========================================================================== */
+/* Phase 4b.4: MQTT 3.1.1 client + HA 2026.11 Auto-Discovery loopback tests   */
+/* ========================================================================== */
+#include "mcufw_mqtt.h"
+#include "mcufw_devcfg.h"
+#include "mcufw_ota.h"
+
+typedef struct {
+    uint8_t ptype;
+    uint8_t flags;
+    uint8_t retain;
+    char    topic[96];
+    char    payload[960];
+    size_t  plen;
+    uint8_t raw[192];
+    size_t  raw_len;
+} fk_pkt_t;
+
+static fk_pkt_t fk_pkts[64];
+static int      fk_pkt_cnt;
+static uint8_t  fk_tx_acc[2048];
+static size_t   fk_tx_len;
+static uint8_t  fk_rx_buf[4096];
+static size_t   fk_rx_rd;
+static size_t   fk_rx_wr;
+
+static int      fk_link_up;
+static int      fk_tcp_st;
+static int      fk_connect_fail;
+static int      fk_send_fail;
+static int      fk_auto_connack;
+static int      fk_auto_suback;
+static int      fk_auto_pingresp;
+static uint32_t fk_now;
+
+static void fk_rx_push(const uint8_t *d, size_t len)
+{
+    for (size_t i = 0u; i < len && fk_rx_wr < sizeof(fk_rx_buf); i++)
+        fk_rx_buf[fk_rx_wr++] = d[i];
+}
+
+static void fk_inject_publish(const char *topic, const char *payload)
+{
+    size_t tlen = strlen(topic);
+    size_t plen = strlen(payload);
+    size_t rem = 2u + tlen + plen;
+    uint8_t hdr[8];
+    size_t hp = 0u;
+    size_t x = rem;
+
+    hdr[hp++] = 0x30u;
+    do {
+        uint8_t b = (uint8_t)(x & 0x7fu);
+        x >>= 7;
+        if (x > 0u) b |= 0x80u;
+        hdr[hp++] = b;
+    } while (x > 0u && hp < 5u);
+    hdr[hp++] = (uint8_t)(tlen >> 8);
+    hdr[hp++] = (uint8_t)(tlen & 0xffu);
+    fk_rx_push(hdr, hp);
+    fk_rx_push((const uint8_t *)topic, tlen);
+    fk_rx_push((const uint8_t *)payload, plen);
+}
+
+static void fk_clear_pkts(void)
+{
+    fk_pkt_cnt = 0;
+    fk_tx_len = 0u;
+}
+
+static void fk_reset(void)
+{
+    fk_clear_pkts();
+    fk_rx_rd = 0u;
+    fk_rx_wr = 0u;
+    fk_link_up = 1;
+    fk_tcp_st = 0;
+    fk_connect_fail = 0;
+    fk_send_fail = 0;
+    fk_auto_connack = 1;
+    fk_auto_suback = 1;
+    fk_auto_pingresp = 1;
+    fk_now = 1000u;
+}
+
+static const fk_pkt_t *fk_find(const char *topic)
+{
+    for (int i = fk_pkt_cnt - 1; i >= 0; i--) {
+        if (strcmp(fk_pkts[i].topic, topic) == 0)
+            return &fk_pkts[i];
+    }
+    return NULL;
+}
+
+static int has_bytes(const uint8_t *hay, size_t hlen, const char *needle)
+{
+    size_t nlen = strlen(needle);
+    if (nlen == 0u || hlen < nlen) return 0;
+    for (size_t i = 0u; i + nlen <= hlen; i++) {
+        if (memcmp(hay + i, needle, nlen) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+static int fk_io_link_ready(void) { return fk_link_up; }
+
+static int fk_io_tcp_connect(const char *host, uint16_t port)
+{
+    (void)host; (void)port;
+    if (fk_connect_fail) {
+        fk_tcp_st = 0;
+        return -1;
+    }
+    fk_rx_rd = 0u;
+    fk_rx_wr = 0u;
+    fk_tx_len = 0u;
+    fk_tcp_st = 2;
+    return 0;
+}
+
+static int fk_io_tcp_state(void) { return fk_tcp_st; }
+
+static int fk_io_tcp_send(const uint8_t *buf, size_t len)
+{
+    if (fk_send_fail || fk_tcp_st != 2)
+        return -1;
+    for (size_t i = 0u; i < len && fk_tx_len < sizeof(fk_tx_acc); i++)
+        fk_tx_acc[fk_tx_len++] = buf[i];
+
+    while (fk_tx_len >= 2u) {
+        uint32_t rem = 0u, mult = 1u;
+        size_t pos = 1u;
+        int ok = 0;
+        while (pos < fk_tx_len && pos <= 4u) {
+            uint8_t b = fk_tx_acc[pos++];
+            rem += (uint32_t)(b & 0x7fu) * mult;
+            if ((b & 0x80u) == 0u) { ok = 1; break; }
+            mult *= 128u;
+        }
+        if (!ok || fk_tx_len < pos + rem)
+            break;
+
+        size_t total = pos + (size_t)rem;
+        if (fk_pkt_cnt < (int)(sizeof(fk_pkts) / sizeof(fk_pkts[0]))) {
+            fk_pkt_t *pk = &fk_pkts[fk_pkt_cnt++];
+            memset(pk, 0, sizeof(*pk));
+            pk->ptype = (uint8_t)((fk_tx_acc[0] >> 4) & 0x0fu);
+            pk->flags = (uint8_t)(fk_tx_acc[0] & 0x0fu);
+            pk->retain = (uint8_t)(pk->flags & 0x01u);
+            pk->raw_len = total < sizeof(pk->raw) ? total : sizeof(pk->raw);
+            memcpy(pk->raw, fk_tx_acc, pk->raw_len);
+            if (pk->ptype == 3 && rem >= 2u) {
+                uint16_t tlen = (uint16_t)(((uint16_t)fk_tx_acc[pos] << 8) | fk_tx_acc[pos + 1u]);
+                size_t cn = tlen < sizeof(pk->topic) - 1u ? tlen : sizeof(pk->topic) - 1u;
+                memcpy(pk->topic, fk_tx_acc + pos + 2u, cn);
+                pk->topic[cn] = '\0';
+                size_t p_off = pos + 2u + tlen;
+                size_t p_rem = (total > p_off) ? (total - p_off) : 0u;
+                size_t pn = p_rem < sizeof(pk->payload) - 1u ? p_rem : sizeof(pk->payload) - 1u;
+                memcpy(pk->payload, fk_tx_acc + p_off, pn);
+                pk->payload[pn] = '\0';
+                pk->plen = p_rem;
+            }
+        }
+
+        uint8_t ptype = (uint8_t)((fk_tx_acc[0] >> 4) & 0x0fu);
+        const uint8_t *body = fk_tx_acc + pos;
+        if (ptype == 1 && fk_auto_connack) {
+            static const uint8_t ca[4] = { 0x20u, 0x02u, 0x00u, 0x00u };
+            fk_rx_push(ca, sizeof(ca));
+        } else if (ptype == 8 && fk_auto_suback && rem >= 2u) {
+            uint8_t sa[7] = { 0x90u, 0x05u, body[0], body[1], 0x00u, 0x00u, 0x00u };
+            fk_rx_push(sa, sizeof(sa));
+        } else if (ptype == 12 && fk_auto_pingresp) {
+            static const uint8_t pr[2] = { 0xD0u, 0x00u };
+            fk_rx_push(pr, sizeof(pr));
+        }
+
+        if (total < fk_tx_len)
+            memmove(fk_tx_acc, fk_tx_acc + total, fk_tx_len - total);
+        fk_tx_len -= total;
+    }
+    return (int)len;
+}
+
+static int fk_io_tcp_recv(uint8_t *buf, size_t cap)
+{
+    size_t n = 0u;
+    while (n < cap && fk_rx_rd < fk_rx_wr)
+        buf[n++] = fk_rx_buf[fk_rx_rd++];
+    if (fk_rx_rd == fk_rx_wr) {
+        fk_rx_rd = 0u;
+        fk_rx_wr = 0u;
+    }
+    return (int)n;
+}
+
+static void fk_io_tcp_close(void) { fk_tcp_st = 0; }
+static uint32_t fk_io_now_ms(void) { return fk_now; }
+static int fk_io_diag_info(char *ip_out, size_t ip_cap, int *rssi_out, uint8_t *slot_out)
+{
+    if (ip_out && ip_cap > 0u) snprintf(ip_out, ip_cap, "192.168.1.115");
+    if (rssi_out) *rssi_out = -48;
+    if (slot_out) *slot_out = 0u;
+    return 0;
+}
+
+static const mcufw_mqtt_io_t fk_mqtt_io = {
+    fk_io_link_ready, fk_io_tcp_connect, fk_io_tcp_state,
+    fk_io_tcp_send, fk_io_tcp_recv, fk_io_tcp_close,
+    fk_io_now_ms, fk_io_diag_info
+};
+
+static void run_mqtt_client_ha(void)
+{
+    static const mcufw_runtime_io_t rt_io = { host_out_read, host_button_read, host_status_write };
+    mcufw_state_t *st = mcufw_state();
+    const fk_pkt_t *p;
+    mcufw_devcfg_t *dc;
+
+    fk_reset();
+    mcufw_config_init();
+    mcufw_config_hal_stub_reset();
+    mcufw_devcfg_boot();
+    mcufw_ota_reset();
+    mcufw_rollback_test_reset_state();
+    mcufw_state_init(st);
+    mcufw_pwm_init();
+    mcufw_pwm_stats_reset();
+    mcufw_net_host_reset();
+    (void)mcufw_net_init(mcufw_net_host_transport(), DID_HOST);
+    mcufw_runtime_init(&rt_io);
+
+    dc = mcufw_devcfg();
+    strcpy(dc->mqtt_host, "192.168.1.106");
+    dc->mqtt_port = 1883u;
+    strcpy(dc->mqtt_user, "ha_mqtt");
+    strcpy(dc->mqtt_pass, "secret_pw");
+    dc->mqtt_enabled = 1u;
+
+    mcufw_mqtt_client_init(DID_HOST);
+    mcufw_mqtt_client_bind(&fk_mqtt_io);
+
+    /* 1. First tick sends CONNECT with LWT + auth and processes queued CONNACK */
+    mcufw_mqtt_client_tick();
+    check("mqtt_ha/connect_lwt_and_auth",
+          fk_pkt_cnt >= 1 && fk_pkts[0].ptype == 1 &&
+          has_bytes(fk_pkts[0].raw, fk_pkts[0].raw_len, "MQTT") &&
+          has_bytes(fk_pkts[0].raw, fk_pkts[0].raw_len, "yeelight/05eb8034/availability") &&
+          has_bytes(fk_pkts[0].raw, fk_pkts[0].raw_len, "offline") &&
+          has_bytes(fk_pkts[0].raw, fk_pkts[0].raw_len, "ha_mqtt") &&
+          has_bytes(fk_pkts[0].raw, fk_pkts[0].raw_len, "secret_pw") &&
+          mcufw_mqtt_client_stats()->connects == 1u);
+
+    /* 2. Run discovery burst + SUBSCRIBE + SUBACK -> CONNECTED */
+    for (int i = 0; i < 20; i++) {
+        fk_now += 10u;
+        mcufw_mqtt_client_tick();
+    }
+    check("mqtt_ha/connected_after_burst",
+          mcufw_mqtt_client_stats()->state == MCUFW_MQTT_ST_CONNECTED &&
+          mcufw_mqtt_client_stats()->suback_rx == 1u);
+
+    p = fk_find("yeelight/05eb8034/availability");
+    check("mqtt_ha/availability_online_retained",
+          p != NULL && p->retain == 1 && strcmp(p->payload, "online") == 0);
+
+    p = fk_find("homeassistant/light/yeelight_05eb8034/config");
+    check("mqtt_ha/discovery_light_ha2026",
+          p != NULL && p->retain == 1 &&
+          strstr(p->payload, "\"name\":null") != NULL &&
+          strstr(p->payload, "\"color_mode\":true") != NULL &&
+          strstr(p->payload, "\"min_mireds\":153") != NULL &&
+          strstr(p->payload, "\"ids\":[\"yeelight_05eb8034\"]") != NULL &&
+          strstr(p->payload, "\"cu\":\"http://192.168.1.115:8080/\"") != NULL);
+
+    p = fk_find("homeassistant/update/yeelight_05eb8034_fw/config");
+    check("mqtt_ha/discovery_update",
+          p != NULL && strstr(p->payload, "\"dev_cla\":\"firmware\"") != NULL);
+
+    p = fk_find("homeassistant/select/yeelight_05eb8034_poweron/config");
+    check("mqtt_ha/discovery_config_select",
+          p != NULL && strstr(p->payload, "\"ent_cat\":\"config\"") != NULL &&
+          strstr(p->payload, "\"options\":[\"last\",\"off\",\"on_default\"]") != NULL);
+
+    p = fk_find("homeassistant/number/yeelight_05eb8034_pwm_freq/config");
+    check("mqtt_ha/discovery_config_pwm_number",
+          p != NULL && strstr(p->payload, "\"unit_of_meas\":\"Hz\"") != NULL);
+
+    p = fk_find("homeassistant/number/yeelight_05eb8034_transition/config");
+    check("mqtt_ha/discovery_config_transition",
+          p != NULL && strstr(p->payload, "\"unit_of_meas\":\"ms\"") != NULL);
+
+    p = fk_find("homeassistant/button/yeelight_05eb8034_restart/config");
+    check("mqtt_ha/discovery_restart_btn",
+          p != NULL && strstr(p->payload, "\"dev_cla\":\"restart\"") != NULL);
+
+    p = fk_find("homeassistant/button/yeelight_05eb8034_rollback/config");
+    check("mqtt_ha/discovery_rollback_btn",
+          p != NULL && strstr(p->payload, "\"payload_press\":\"ROLLBACK\"") != NULL);
+
+    p = fk_find("homeassistant/sensor/yeelight_05eb8034_rssi/config");
+    check("mqtt_ha/discovery_diag_rssi",
+          p != NULL && strstr(p->payload, "\"ent_cat\":\"diagnostic\"") != NULL);
+
+    p = fk_find("yeelight/05eb8034/diag");
+    check("mqtt_ha/initial_diag_payload",
+          p != NULL && strstr(p->payload, "\"rssi\":-48") != NULL &&
+          strstr(p->payload, "192.168.1.115") != NULL);
+
+    /* 3. Idle ticks issue ZERO PWM writes */
+    {
+        uint32_t rw0 = mcufw_pwm_stats()->reg_writes;
+        for (int i = 0; i < 5; i++) {
+            fk_now += 10u;
+            mcufw_runtime_tick();
+        }
+        check("mqtt_ha/idle_zero_pwm_writes",
+              mcufw_pwm_stats()->reg_writes == rw0 &&
+              mcufw_runtime_stats()->last_tick_writes == 0u);
+    }
+
+    /* 4. Inbound HA JSON light set (mireds 250 -> 4000K) mutates state & syncs */
+    fk_clear_pkts();
+    fk_inject_publish("yeelight/05eb8034/set",
+                      "{\"state\":\"ON\",\"brightness\":65,\"color_temp\":250}");
+    fk_now += 10u;
+    mcufw_runtime_tick();
+    p = fk_find("yeelight/05eb8034/state");
+    check("mqtt_ha/inbound_set_mireds_sync",
+          st->power == 1u && st->bright == 65u && st->ct == 4000u &&
+          st->color_mode == MCUFW_COLOR_MODE_CT &&
+          p != NULL && strstr(p->payload, "\"state\":\"ON\"") != NULL &&
+          strstr(p->payload, "\"brightness\":65") != NULL &&
+          strstr(p->payload, "\"color_temp\":250") != NULL);
+
+    /* 5. Inbound nested RGB JSON set */
+    fk_clear_pkts();
+    fk_inject_publish("yeelight/05eb8034/set",
+                      "{\"state\":\"ON\",\"color\":{\"r\":255,\"g\":12,\"b\":128}}");
+    fk_now += 10u;
+    mcufw_runtime_tick();
+    p = fk_find("yeelight/05eb8034/state");
+    check("mqtt_ha/inbound_rgb_nested",
+          st->color_mode == MCUFW_COLOR_MODE_RGB &&
+          st->rgb_r == 255u && st->rgb_g == 12u && st->rgb_b == 128u &&
+          p != NULL && strstr(p->payload, "\"color_mode\":\"rgb\"") != NULL &&
+          strstr(p->payload, "\"r\":255") != NULL);
+
+    /* 6. Bidirectional sync: LAN-RPC 55443 mutation auto-publishes via MQTT */
+    fk_clear_pkts();
+    {
+        static const char rpc_line[] = "{\"id\":7,\"method\":\"set_ct_abx\",\"params\":[3000,\"smooth\",500]}";
+        mcufw_net_host_push_line(rpc_line, sizeof(rpc_line) - 1u);
+    }
+    fk_now += 10u;
+    mcufw_runtime_tick();
+    p = fk_find("yeelight/05eb8034/state");
+    check("mqtt_ha/lan_rpc_syncs_to_mqtt",
+          st->ct == 3000u && p != NULL && strstr(p->payload, "\"ct\":3000") != NULL);
+
+    /* 7. Config entities: pwm_freq_hz, power_on_mode, transition_ms persist */
+    fk_clear_pkts();
+    fk_inject_publish("yeelight/05eb8034/config/pwm_freq_hz/set", "2500");
+    fk_inject_publish("yeelight/05eb8034/config/power_on_mode/set", "last");
+    fk_inject_publish("yeelight/05eb8034/config/transition_ms/set", "300");
+    fk_now += 10u;
+    mcufw_runtime_tick();
+    p = fk_find("yeelight/05eb8034/config/state");
+    check("mqtt_ha/config_entities_persisted",
+          mcufw_devcfg()->pwm_freq_hz == 2500u &&
+          mcufw_devcfg()->power_on_mode == MCUFW_POWERON_LAST &&
+          mcufw_devcfg()->default_transition_ms == 300u &&
+          p != NULL && strstr(p->payload, "\"pwm_freq_hz\":2500") != NULL &&
+          strstr(p->payload, "\"power_on_mode\":\"last\"") != NULL);
+
+    /* 8. OTA install payload queues Self-OTA */
+    fk_inject_publish("yeelight/05eb8034/ota/install",
+                      "{\"url\":\"http://192.168.1.196:8088/fw.bin\",\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\"}");
+    fk_now += 10u;
+    mcufw_mqtt_client_tick();
+    check("mqtt_ha/ota_install_queues",
+          mcufw_ota_state()->status == MCUFW_OTA_QUEUED &&
+          strcmp(mcufw_ota_state()->last_url, "http://192.168.1.196:8088/fw.bin") == 0);
+    mcufw_ota_reset();
+
+    /* 9. Safe rollback button activates passive slot & resets after delay */
+    mcufw_rollback_test_reset_state();
+    fk_inject_publish("yeelight/05eb8034/config/rollback", "ROLLBACK");
+    fk_now += 10u;
+    mcufw_mqtt_client_tick();
+    {
+        int pending_ok = mcufw_ota_state()->rollback_pending == 1;
+        for (int i = 0; i < 6; i++)
+            (void)mcufw_ota_service();
+        check("mqtt_ha/rollback_button",
+              pending_ok && mcufw_rollback_test_was_passive_activated() == 1 &&
+              mcufw_rollback_test_was_reset_called() == 1);
+    }
+    mcufw_ota_reset();
+    mcufw_rollback_test_reset_state();
+
+    /* 10. Restart button waits flush delay ticks before reset */
+    fk_inject_publish("yeelight/05eb8034/config/restart", "PRESS");
+    fk_now += 10u;
+    mcufw_mqtt_client_tick();
+    {
+        int delayed = (mcufw_mqtt_client_stats()->restart_pending == 1 &&
+                       mcufw_rollback_test_was_reset_called() == 0);
+        for (int i = 0; i < 6; i++)
+            mcufw_mqtt_client_tick();
+        check("mqtt_ha/restart_button_delayed",
+              delayed && mcufw_mqtt_client_stats()->restart_pending == 0 &&
+              mcufw_rollback_test_was_reset_called() == 1);
+    }
+
+    /* 11. Keepalive PINGREQ / PINGRESP + 30s diag refresh */
+    fk_clear_pkts();
+    fk_now += 31000u;
+    mcufw_mqtt_client_tick();
+    mcufw_mqtt_client_tick();
+    check("mqtt_ha/keepalive_and_diag",
+          mcufw_mqtt_client_stats()->ping_tx >= 1u &&
+          mcufw_mqtt_client_stats()->ping_rx >= 1u &&
+          fk_find("yeelight/05eb8034/diag") != NULL);
+
+    /* 12. Disconnect triggers exponential backoff (2000ms -> 4000ms) then recovers */
+    fk_tcp_st = 0;
+    mcufw_mqtt_client_tick();
+    {
+        uint32_t b1 = mcufw_mqtt_client_stats()->backoff_ms;
+        fk_connect_fail = 1;
+        fk_now += 2000u;
+        mcufw_mqtt_client_tick();
+        uint32_t b2 = mcufw_mqtt_client_stats()->backoff_ms;
+        fk_connect_fail = 0;
+        fk_now += 4000u;
+        for (int i = 0; i < 20; i++) {
+            fk_now += 10u;
+            mcufw_mqtt_client_tick();
+        }
+        check("mqtt_ha/exponential_backoff_and_recover",
+              b1 == 2000u && b2 == 4000u &&
+              mcufw_mqtt_client_stats()->state == MCUFW_MQTT_ST_CONNECTED &&
+              mcufw_mqtt_client_stats()->connects >= 2u &&
+              mcufw_mqtt_client_stats()->backoff_ms == 0u);
+    }
+
+    mcufw_mqtt_client_bind(NULL);
+    mcufw_ota_reset();
+    mcufw_rollback_test_reset_state();
 }
